@@ -1,5 +1,12 @@
 const API_URL = 'http://localhost:4000/api/v1';
 const getToken = () => JSON.parse(sessionStorage.getItem('token'));
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
 
 const checkAdmin = () => {
   const user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -27,17 +34,27 @@ $(document).ready(() => {
     ajax: { url: `${API_URL}/categories`, dataSrc: 'rows', headers: { Authorization: `Bearer ${getToken()}` } },
     columns: [
       { data: 'id' },
-      { data: 'name' },
-      { data: 'type' },
+      {
+        data: 'name',
+        render: (d) => `
+          <div class="category-name-cell">
+            <span class="category-icon"><i class="fas fa-tag"></i></span>
+            <strong>${escapeHtml(d)}</strong>
+          </div>
+        `
+      },
+      { data: 'type', render: (d) => `<span class="type-pill type-${String(d).toLowerCase()}">${escapeHtml(d)}</span>` },
       {
         data: null,
         render: (row) => {
           if (trashState.showTrashed) {
-            return `<button class="btn btn-success btn-sm restore-btn" data-id="${row.id}">Restore</button>`;
+            return `<div class="table-actions"><button class="btn btn-success btn-sm restore-btn" data-id="${row.id}"><i class="fas fa-trash-restore"></i> Restore</button></div>`;
           }
           return `
-          <button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}">Edit</button>
-          <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}">Delete</button>
+          <div class="table-actions category-actions">
+            <button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}"><i class="fas fa-trash"></i> Delete</button>
+          </div>
         `;
         }
       }
@@ -50,6 +67,7 @@ $(document).ready(() => {
   $('#btn-add').click(() => {
     $('#category-form')[0].reset();
     $('#category-id').val('');
+    $('#categoryModal .modal-title').text('Add Category');
     $('#categoryModal').modal('show');
   });
 
@@ -58,6 +76,7 @@ $(document).ready(() => {
     $('#category-id').val(row.id);
     $('#name').val(row.name);
     $('#type').val(row.type);
+    $('#categoryModal .modal-title').text('Edit Category');
     $('#categoryModal').modal('show');
   });
 

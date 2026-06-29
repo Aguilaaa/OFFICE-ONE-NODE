@@ -4,7 +4,8 @@ const API_BASE = (window.location.port === '4000')
 const API_URL = `${API_BASE}/api/v1`;
 const PAGE_SIZE = 8;
 let allProducts = [];
-let currentPage = 1;
+let currentPage = 0;
+let loadingMore = false;
 
 const isActiveProduct = (p) => Number(p.is_active) === 1 || p.is_active === true;
 
@@ -18,46 +19,42 @@ const productCardImage = (p) => {
 const showGridMessage = (html) => {
   $('#product-grid').html(`<div class="text-center w-100 p-4" style="grid-column: 1 / -1;">${html}</div>`);
   $('#pagination').empty();
+  $('#scroll-status').empty();
 };
 
-const renderProducts = (products) => {
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = products.slice(start, start + PAGE_SIZE);
-  const $grid = $('#product-grid');
-  $grid.empty();
-
-  if (pageItems.length === 0) {
-    showGridMessage('<p class="text-muted">No products found.</p>');
-    return;
-  }
-
-  pageItems.forEach((p) => {
-    const img = productCardImage(p);
-    const badge = p.category === 'Service' ? 'badge-service' : 'badge-product';
-    $grid.append(`
-      <div class="product-card">
-        <a href="product-detail.html?id=${p.id}" class="product-card-link">
-          ${img}
-          <div class="card-body">
-            <div class="product-code">${p.item_code}</div>
-            <div class="product-name">${p.name}</div>
-            <span class="badge ${badge}">${p.category}</span>
-            <div class="product-price">PHP ${parseFloat(p.unit_price).toFixed(2)}</div>
-            <small class="text-muted">${p.unit} | Stock: ${p.stock_quantity}</small>
-          </div>
-        </a>
-        <div class="card-actions">
-          <button type="button" class="btn btn-primary btn-sm btn-block add-cart-btn" data-id="${p.id}">Add to Cart</button>
+const productCardHtml = (p) => {
+  const img = productCardImage(p);
+  const badge = p.category === 'Service' ? 'badge-service' : 'badge-product';
+  return `
+    <div class="product-card">
+      <a href="product-detail.html?id=${p.id}" class="product-card-link">
+        ${img}
+        <div class="card-body">
+          <div class="product-code">${p.item_code}</div>
+          <div class="product-name">${p.name}</div>
+          <span class="badge ${badge}">${p.category}</span>
+          <div class="product-price">PHP ${parseFloat(p.unit_price).toFixed(2)}</div>
+          <small class="text-muted">Stock: ${p.stock_quantity}</small>
         </div>
+      </a>
+      <div class="card-actions customer-cart-action">
+        <button type="button" class="btn btn-primary btn-sm btn-block add-cart-btn" data-id="${p.id}">Add to Cart</button>
       </div>
-    `);
-  });
-
-  renderPagination(products.length);
+    </div>
+  `;
 };
 
-const renderPagination = (total) => {
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+const updateInfiniteStatus = () => {
+  const shown = currentPage * PAGE_SIZE;
+  if (shown < allProducts.length) {
+    $('#scroll-status').html('<span class="infinite-status"><i class="fas fa-arrow-down"></i> Scroll down to load more products</span>');
+  } else {
+    $('#scroll-status').html('<span class="infinite-status">All products loaded</span>');
+  }
+};
+
+const renderPagination = () => {
+  const totalPages = Math.ceil(allProducts.length / PAGE_SIZE);
   const $pag = $('#pagination');
   $pag.empty();
   if (totalPages <= 1) return;
@@ -65,6 +62,57 @@ const renderPagination = (total) => {
   for (let i = 1; i <= totalPages; i++) {
     $pag.append(`<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
   }
+};
+
+const appendNextProducts = () => {
+  if (loadingMore || currentPage * PAGE_SIZE >= allProducts.length) return;
+  loadingMore = true;
+  const start = currentPage * PAGE_SIZE;
+  const pageItems = allProducts.slice(start, start + PAGE_SIZE);
+  const $grid = $('#product-grid');
+
+  if (pageItems.length === 0) {
+    updateInfiniteStatus();
+    loadingMore = false;
+    return;
+  }
+
+  pageItems.forEach((p) => {
+    $grid.append(productCardHtml(p));
+  });
+  if (typeof isAdminUser === 'function' && isAdminUser()) {
+    $('.customer-cart-action').hide();
+  }
+
+  currentPage += 1;
+  renderPagination();
+  updateInfiniteStatus();
+  loadingMore = false;
+};
+
+const renderProducts = () => {
+  const $grid = $('#product-grid');
+  $grid.empty();
+  currentPage = 0;
+
+  if (allProducts.length === 0) {
+    showGridMessage('<p class="text-muted">No products found.</p>');
+    return;
+  }
+
+  appendNextProducts();
+};
+
+const showPage = (page) => {
+  $('#product-grid').empty();
+  currentPage = page - 1;
+  appendNextProducts();
+  $('html, body').animate({ scrollTop: $('#product-grid').offset().top - 20 }, 200);
+};
+
+const shouldLoadMore = () => {
+  const distanceFromBottom = $(document).height() - ($(window).scrollTop() + $(window).height());
+  return distanceFromBottom < 250;
 };
 
 const loadProducts = (search = '') => {
@@ -82,12 +130,11 @@ const loadProducts = (search = '') => {
       return;
     }
     allProducts = data.rows.filter(isActiveProduct);
-    currentPage = 1;
     if (allProducts.length === 0) {
       showGridMessage('<p class="text-muted">No active products in database. Run <code>npm run seed</code> in backend.</p>');
       return;
     }
-    renderProducts(allProducts);
+    renderProducts();
   }).fail((xhr) => {
     const msg = xhr.status === 0
       ? 'Cannot reach the API server.'
@@ -132,9 +179,12 @@ $(document).ready(() => {
     loadProducts($('#search-input').val());
   });
 
+  $(window).on('scroll', () => {
+    if (shouldLoadMore()) appendNextProducts();
+  });
+
   $(document).on('click', '.page-btn', function () {
-    currentPage = parseInt($(this).data('page'), 10);
-    renderProducts(allProducts);
+    showPage(parseInt($(this).data('page'), 10));
   });
 
   $('.filter-btn').click(function () {
@@ -147,14 +197,17 @@ $(document).ready(() => {
       showGridMessage('<p class="text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</p>');
       $.get(`${API_URL}/products`, { category: cat }, (data) => {
         allProducts = (data.rows || []).filter(isActiveProduct);
-        currentPage = 1;
-        renderProducts(allProducts);
+        renderProducts();
       }).fail(() => loadProducts());
     }
   });
 
   $(document).on('click', '.add-cart-btn', function (e) {
     e.preventDefault();
+    if (typeof isAdminUser === 'function' && isAdminUser()) {
+      Swal.fire({ icon: 'info', text: 'Admin accounts do not use cart.' });
+      return;
+    }
     const id = parseInt($(this).data('id'), 10);
     const product = allProducts.find((p) => p.id === id);
     if (!product) return;

@@ -11,8 +11,7 @@ async function getOrderTotals(sequelize, transaction) {
     type: QueryTypes.SELECT
   });
   const subtotal = parseFloat(row.subtotal);
-  const discount = parseFloat(transaction.discount || 0);
-  return { subtotal, grand_total: Math.max(0, subtotal - discount) };
+  return { subtotal, grand_total: subtotal };
 }
 
 async function attachTotals(sequelize, list) {
@@ -29,7 +28,6 @@ async function getIncomeByDateRange(sequelize, startDate, endDate) {
     SELECT COUNT(*) AS transaction_count,
       COALESCE(SUM(
         (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM transaction_items ti WHERE ti.transaction_id = t.id)
-        - COALESCE(t.discount, 0)
       ), 0) AS total_income
     FROM transactions t
     WHERE t.status = 'Completed'
@@ -49,7 +47,6 @@ async function getDashboardRevenue(sequelize) {
   const [row] = await sequelize.query(`
     SELECT COALESCE(SUM(
       (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM transaction_items ti WHERE ti.transaction_id = t.id)
-      - COALESCE(t.discount, 0)
     ), 0) AS total_revenue
     FROM transactions t WHERE t.status = 'Completed' AND t.deleted_at IS NULL
   `, { type: QueryTypes.SELECT });
@@ -61,7 +58,6 @@ async function getMonthlySales(sequelize, since) {
     SELECT DATE_FORMAT(t.createdAt, '%Y-%m') AS month,
       SUM(
         (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM transaction_items ti WHERE ti.transaction_id = t.id)
-        - COALESCE(t.discount, 0)
       ) AS revenue
     FROM transactions t
     WHERE t.status = 'Completed' AND t.deleted_at IS NULL AND t.createdAt >= ?
@@ -74,7 +70,7 @@ async function getRecentOrderTotals(sequelize, since) {
   return sequelize.query(`
     SELECT t.id, t.status, t.createdAt,
       (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM transaction_items ti WHERE ti.transaction_id = t.id)
-        - COALESCE(t.discount, 0) AS grand_total
+        AS grand_total
     FROM transactions t
     WHERE t.deleted_at IS NULL AND t.createdAt >= ?
     ORDER BY t.createdAt DESC

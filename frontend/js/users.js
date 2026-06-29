@@ -1,5 +1,14 @@
 const API_URL = 'http://localhost:4000/api/v1';
 const getToken = () => JSON.parse(sessionStorage.getItem('token'));
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
+const normalizeRole = (role) => ['admin', 'customer', 'staff'].includes(role) ? role : 'customer';
+const getInitial = (name) => String(name || '?').trim().charAt(0).toUpperCase() || '?';
 
 const checkAdmin = () => {
   const user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -36,30 +45,46 @@ $(document).ready(() => {
       headers: { Authorization: `Bearer ${getToken()}` }
     },
     columns: [
-      { data: 'id' },
-      { data: 'name' },
-      { data: 'email' },
-      { data: 'role', render: (d) => d || 'customer' },
+      { data: 'id', render: (d) => `<span class="user-id-pill">#${escapeHtml(d)}</span>` },
+      {
+        data: 'name',
+        render: (d) => `
+          <div class="user-name-cell">
+            <span class="user-avatar">${escapeHtml(getInitial(d))}</span>
+            <strong>${escapeHtml(d)}</strong>
+          </div>
+        `
+      },
+      { data: 'email', render: (d) => `<span class="email-cell">${escapeHtml(d)}</span>` },
+      { data: 'role', render: (d) => `<span class="role-pill role-${normalizeRole(d)}">${escapeHtml(normalizeRole(d))}</span>` },
       {
         data: 'is_active',
-        render: (d) => d ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>'
+        render: (d) => `<span class="status-pill ${d ? 'status-active' : 'status-inactive'}">${d ? 'Active' : 'Inactive'}</span>`
       },
-      { data: 'createdAt', render: (d) => new Date(d).toLocaleDateString() },
+      { data: 'createdAt', render: (d) => `<span class="date-cell">${new Date(d).toLocaleDateString()}</span>` },
       {
         data: null,
+        orderable: false,
         render: (row) => {
           if (trashState.showTrashed) {
-            return `<button class="btn btn-success btn-sm restore-btn" data-id="${row.id}">Restore</button>`;
+            return `<div class="table-actions"><button class="btn btn-success btn-sm restore-btn" data-id="${row.id}"><i class="fas fa-trash-restore"></i> Restore</button></div>`;
           }
           return `
-          <select class="form-control form-control-sm role-select" data-id="${row.id}">
-            <option value="admin" ${row.role === 'admin' ? 'selected' : ''}>Admin</option>
-            <option value="customer" ${row.role === 'customer' || row.role === 'staff' ? 'selected' : ''}>Customer</option>
-          </select>
-          <button class="btn btn-sm btn-danger toggle-btn mt-1" data-id="${row.id}">Deactivate</button>
+          <div class="table-actions user-actions">
+            <select class="form-control form-control-sm role-select" data-id="${row.id}">
+              <option value="admin" ${row.role === 'admin' ? 'selected' : ''}>Admin</option>
+              <option value="customer" ${row.role === 'customer' || row.role === 'staff' ? 'selected' : ''}>Customer</option>
+            </select>
+            <button class="btn btn-sm btn-danger toggle-btn" data-id="${row.id}"><i class="fas fa-user-slash"></i> Deactivate</button>
+          </div>
         `;
         }
       }
+    ],
+    autoWidth: false,
+    columnDefs: [
+      { targets: 2, width: '240px' },
+      { targets: 6, width: '190px', orderable: false }
     ]
   });
 
@@ -69,6 +94,7 @@ $(document).ready(() => {
   $('#btn-add').click(() => {
     $('#user-form')[0].reset();
     $('#user-role').val('customer');
+    $('#userModal .modal-title').text('Add User');
     $('#userModal').modal('show');
   });
 

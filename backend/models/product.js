@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     item_code: { type: DataTypes.STRING, allowNull: false, unique: true },
     name: { type: DataTypes.STRING, allowNull: false },
     category: { type: DataTypes.ENUM('Product', 'Service'), defaultValue: 'Product' },
-    unit: { type: DataTypes.STRING, allowNull: false },
+    unit: { type: DataTypes.STRING, allowNull: true },
     unit_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: true },
     stock_quantity: { type: DataTypes.INTEGER, defaultValue: 0 },

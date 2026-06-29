@@ -16,10 +16,9 @@
       <span>Office Supplies & Furniture</span>
     </a>
     <div class="nav-links">
-      <a href="index.html"><i class="fas fa-home"></i> Home</a>
       <a href="cart.html"><i class="fas fa-shopping-cart"></i> Cart <span id="cart-count" class="cart-badge">0</span></a>
       <span id="nav-admin" style="display:none"><a href="admin/dashboard.html"><i class="fas fa-cog"></i> Admin</a></span>
-      <span id="nav-auth"></span>
+      <div id="nav-auth"></div>
     </div>
   </nav>
 
@@ -32,11 +31,6 @@
           <div class="form-group">
             <label>Notes (optional)</label>
             <textarea id="notes" class="form-control" rows="3" placeholder="Delivery instructions, PO number, etc."></textarea>
-          </div>
-          <div class="form-group">
-            <label>Discount (PHP, optional)</label>
-            <input type="number" id="discount" class="form-control" min="0" step="0.01" value="0">
-            <span id="discount-error" class="error-msg">Enter a valid discount amount</span>
           </div>
           <button type="submit" id="btn-place-order" class="btn btn-primary btn-lg">
             <i class="fas fa-check"></i> Place Order

@@ -35,7 +35,6 @@
           name: product.name,
           item_code: product.item_code,
           unit_price: parseFloat(product.unit_price),
-          unit: product.unit,
           stock_quantity: product.stock_quantity,
           image_url: product.image_url || null,
           ProductPhotos: product.ProductPhotos || [],

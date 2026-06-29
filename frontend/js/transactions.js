@@ -1,5 +1,12 @@
 const API_URL = 'http://localhost:4000/api/v1';
 const getToken = () => JSON.parse(sessionStorage.getItem('token'));
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
 
 const checkAdmin = () => {
   const user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -11,20 +18,20 @@ const checkAdmin = () => {
 };
 
 let products = [];
-let customers = [];
 let orderTable;
 const trashState = { showTrashed: false };
+const normalizeStatus = (status) => status === 'Draft' ? 'Pending' : status;
 
 const addLineRow = (productId = '', qty = 1) => {
   const opts = products.map((p) =>
-    `<option value="${p.id}" data-price="${p.unit_price}" ${p.id == productId ? 'selected' : ''}>${p.item_code} - ${p.name}</option>`
+    `<option value="${p.id}" data-price="${p.unit_price}" ${p.id == productId ? 'selected' : ''}>${escapeHtml(p.item_code)} - ${escapeHtml(p.name)}</option>`
   ).join('');
   $('#line-items').append(`
     <div class="line-row form-row mb-2">
       <div class="col-6"><select class="form-control line-product" required><option value="">Select product</option>${opts}</select></div>
       <div class="col-3"><input type="number" class="form-control line-qty" min="1" value="${qty}" required></div>
       <div class="col-2"><input type="text" class="form-control line-price" readonly></div>
-      <div class="col-1"><button type="button" class="btn btn-danger btn-sm remove-line">X</button></div>
+      <div class="col-1"><button type="button" class="btn btn-danger btn-sm remove-line" aria-label="Remove line item"><i class="fas fa-times"></i></button></div>
     </div>
   `);
   if (productId) $('#line-items .line-row:last .line-product').trigger('change');
@@ -43,7 +50,12 @@ const getLineItems = () => {
 
 const validateOrderForm = () => {
   let ok = true;
+  const allowedStatuses = ['Pending', 'Completed', 'Cancelled'];
   if (!$('#transaction_no').val().trim()) { $('#transaction_no-error').show(); ok = false; } else { $('#transaction_no-error').hide(); }
+  if (!allowedStatuses.includes($('#status').val())) {
+    Swal.fire('Error', 'Select a valid order status.', 'error');
+    ok = false;
+  }
   if (getLineItems().length === 0) { $('#items-error').show(); ok = false; } else { $('#items-error').hide(); }
   return ok;
 };
@@ -51,13 +63,7 @@ const validateOrderForm = () => {
 $(document).ready(() => {
   if (!checkAdmin()) return;
 
-  $.when(
-    $.get(`${API_URL}/products`, (d) => { products = d.rows.filter((p) => p.is_active); }),
-    $.ajax({ url: `${API_URL}/customers`, headers: { Authorization: `Bearer ${getToken()}` }, success: (d) => { customers = d.rows; } })
-  ).done(() => {
-    const custOpts = customers.map((c) => `<option value="${c.id}">${c.customer_code} - ${c.name}</option>`).join('');
-    $('#customer_id').append(custOpts);
-  });
+  $.get(`${API_URL}/products`, (d) => { products = d.rows.filter((p) => p.is_active); });
 
   orderTable = $('#orders-table').DataTable({
     ajax: {
@@ -66,23 +72,42 @@ $(document).ready(() => {
       headers: { Authorization: `Bearer ${getToken()}` }
     },
     columns: [
-      { data: 'id', title: 'Order ID' },
-      { data: 'transaction_no' },
-      { data: 'Customer.name', defaultContent: 'Walk-in' },
-      { data: 'status' },
-      { data: 'grand_total', render: (d) => `PHP ${parseFloat(d || 0).toFixed(2)}` },
-      { data: 'createdAt', render: (d) => new Date(d).toLocaleDateString() },
+      { data: 'id', title: 'Order ID', render: (d) => `<span class="order-id-pill">#${escapeHtml(d)}</span>` },
+      { data: 'transaction_no', title: 'Transaction No', render: (d) => `<strong class="transaction-code">${escapeHtml(d)}</strong>` },
+      {
+        data: 'User.name',
+        title: 'Customer',
+        defaultContent: 'Walk-in',
+        render: (d) => `
+          <div class="customer-cell">
+            <span class="customer-avatar"><i class="fas fa-user"></i></span>
+            <span>${escapeHtml(d || 'Walk-in')}</span>
+          </div>
+        `
+      },
+      {
+        data: 'status',
+        title: 'Status',
+        render: (d) => {
+          const status = normalizeStatus(d);
+          return `<span class="order-status status-${status.toLowerCase()}">${escapeHtml(status)}</span>`;
+        }
+      },
+      { data: 'grand_total', title: 'Total', render: (d) => `<span class="amount-pill">PHP ${parseFloat(d || 0).toFixed(2)}</span>` },
+      { data: 'createdAt', title: 'Date', render: (d) => `<span class="date-cell">${new Date(d).toLocaleDateString()}</span>` },
       {
         data: null,
+        title: 'Actions',
+        orderable: false,
         render: (row) => {
           if (trashState.showTrashed) {
-            return `<button class="btn btn-success btn-sm restore-btn" data-id="${row.id}">Restore</button>`;
+            return `<div class="table-actions"><button class="btn btn-success btn-sm restore-btn" data-id="${row.id}"><i class="fas fa-trash-restore"></i> Restore</button></div>`;
           }
-          let btns = `<button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}">Edit</button>`;
-          if (row.status === 'Draft') {
-            btns += ` <button class="btn btn-primary btn-sm complete-btn" data-id="${row.id}">Complete</button>`;
+          let btns = `<div class="table-actions order-actions"><button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}"><i class="fas fa-edit"></i> Edit</button>`;
+          if (normalizeStatus(row.status) === 'Pending') {
+            btns += ` <button class="btn btn-primary btn-sm complete-btn" data-id="${row.id}"><i class="fas fa-check"></i> Complete</button>`;
           }
-          btns += ` <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}">Delete</button>`;
+          btns += ` <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}"><i class="fas fa-trash"></i> Delete</button></div>`;
           return btns;
         }
       }
@@ -95,8 +120,10 @@ $(document).ready(() => {
   $('#btn-add').click(() => {
     $('#order-form')[0].reset();
     $('#order-id').val('');
+    $('#status').val('Pending');
     $('#line-items').empty();
     addLineRow();
+    $('#orderModal .modal-title').text('New Order');
     $('#orderModal').modal('show');
   });
 
@@ -114,17 +141,17 @@ $(document).ready(() => {
   $(document).on('click', '.edit-btn', function () {
     const id = $(this).data('id');
     const row = orderTable.rows().data().toArray().find((r) => r.id === id);
-    if (!row || row.status === 'Completed') return;
+    if (!row) return;
     $('#order-id').val(row.id);
     $('#transaction_no').val(row.transaction_no);
-    $('#customer_id').val(row.customer_id || '');
-    $('#discount').val(row.discount || 0);
+    $('#status').val(normalizeStatus(row.status));
     $('#notes').val(row.notes || '');
     $('#line-items').empty();
     (row.Products || []).forEach((p) => {
       addLineRow(p.id, p.TransactionItem?.quantity || 1);
     });
     if (!row.Products?.length) addLineRow();
+    $('#orderModal .modal-title').text('Edit Order');
     $('#orderModal').modal('show');
   });
 
@@ -134,8 +161,7 @@ $(document).ready(() => {
     const id = $('#order-id').val();
     const payload = {
       transaction_no: $('#transaction_no').val().trim(),
-      customer_id: $('#customer_id').val() || null,
-      discount: parseFloat($('#discount').val()) || 0,
+      status: $('#status').val(),
       notes: $('#notes').val(),
       items: getLineItems()
     };

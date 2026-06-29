@@ -8,7 +8,6 @@ const {
 exports.getDashboardStats = async (req, res) => {
   try {
     const totalProducts = await db.Product.count({ where: { deleted_at: null, is_active: 1 } });
-    const totalCustomers = await db.Customer.count({ where: { deleted_at: null, is_active: 1 } });
     const totalUsers = await db.User.count({ where: { deleted_at: null } });
     const totalTransactions = await db.Transaction.count({ where: { deleted_at: null } });
     const totalRevenue = await getDashboardRevenue(db.sequelize);
@@ -30,7 +29,7 @@ exports.getDashboardStats = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      stats: { totalProducts, totalCustomers, totalUsers, totalTransactions, totalRevenue },
+      stats: { totalProducts, totalUsers, totalTransactions, totalRevenue },
       recentOrders,
       monthlySales,
       categorySales

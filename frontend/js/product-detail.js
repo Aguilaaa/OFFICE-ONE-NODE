@@ -80,10 +80,14 @@ const renderProduct = (p) => {
   $('#d-name').text(p.name);
   $('#d-badge').text(p.category).attr('class', `badge ${p.category === 'Service' ? 'badge-service' : 'badge-product'}`);
   $('#d-price').text(`PHP ${parseFloat(p.unit_price).toFixed(2)}`);
-  $('#d-unit').text(p.unit);
   $('#d-stock').text(p.stock_quantity);
   $('#d-status').text(Number(p.is_active) ? 'Available' : 'Unavailable');
   $('#d-desc').text(p.description || 'No description provided.');
+  if (isAdmin()) {
+    $('.customer-cart-action').hide();
+  } else {
+    $('.customer-cart-action').show();
+  }
   buildGallery(p);
   $('#detail-loading').addClass('d-none');
   $('#detail-content').removeClass('d-none');
@@ -133,6 +137,10 @@ $(document).ready(() => {
 
   $(document).on('click', '#btn-add-cart', function () {
     if (!currentProduct) return;
+    if (isAdmin()) {
+      Swal.fire({ icon: 'info', text: 'Admin accounts do not use cart.' });
+      return;
+    }
     const qty = parseInt($('#cart-qty').val(), 10) || 1;
     if (qty < 1) {
       Swal.fire({ icon: 'warning', text: 'Quantity must be at least 1.' });

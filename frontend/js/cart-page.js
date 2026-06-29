@@ -32,7 +32,7 @@ const renderCart = () => {
         <div class="cart-item-info">
           <div class="cart-item-code">${item.item_code}</div>
           <a href="product-detail.html?id=${item.product_id}" class="cart-item-name">${item.name}</a>
-          <div class="cart-item-unit">PHP ${item.unit_price.toFixed(2)} / ${item.unit}</div>
+          <div class="cart-item-unit">PHP ${item.unit_price.toFixed(2)}</div>
         </div>
         <div class="cart-item-qty">
           <button type="button" class="qty-btn qty-minus" data-id="${item.product_id}">−</button>
@@ -51,6 +51,13 @@ const renderCart = () => {
 };
 
 $(document).ready(() => {
+  if (typeof isAdminUser === 'function' && isAdminUser()) {
+    Cart.clear();
+    Swal.fire({ icon: 'info', text: 'Admin accounts do not use cart.' })
+      .then(() => window.location.href = 'admin/dashboard.html');
+    return;
+  }
+
   renderCart();
 
   $(document).on('click', '.qty-minus', function () {

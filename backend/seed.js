@@ -50,17 +50,6 @@ const seed = async () => {
       await db.Product.findOrCreate({ where: { item_code: p.item_code }, defaults: { ...p, is_active: 1 } });
     }
 
-    const customers = [
-      { customer_code: 'CUST-001', name: 'ABC Corporation', contact_no: '09171234567', email: 'orders@abc.com', address: '123 Business Ave, Makati' },
-      { customer_code: 'CUST-002', name: 'XYZ Trading', contact_no: '09189876543', email: 'procurement@xyz.com', address: '456 Commerce St, Quezon City' },
-      { customer_code: 'CUST-003', name: 'Greenfield School', contact_no: '0288812345', email: 'admin@greenfield.edu', address: '789 Education Blvd, Pasig' },
-      { customer_code: 'CUST-004', name: 'Walk-in Customer', contact_no: '09000000000', email: null, address: null }
-    ];
-
-    for (const c of customers) {
-      await db.Customer.findOrCreate({ where: { customer_code: c.customer_code }, defaults: { ...c, is_active: 1 } });
-    }
-
     const categories = [
       { name: 'Office Supplies', type: 'Product' },
       { name: 'Office Furniture', type: 'Product' },
@@ -69,19 +58,6 @@ const seed = async () => {
     ];
     for (const c of categories) {
       await db.Category.findOrCreate({ where: { name: c.name }, defaults: c });
-    }
-
-    const units = [
-      { name: 'Piece', abbreviation: 'pc' },
-      { name: 'Box', abbreviation: 'box' },
-      { name: 'Ream', abbreviation: 'rm' },
-      { name: 'Pack', abbreviation: 'pk' },
-      { name: 'Set', abbreviation: 'set' },
-      { name: 'Hour', abbreviation: 'hr' },
-      { name: 'Trip', abbreviation: 'trip' }
-    ];
-    for (const u of units) {
-      await db.Unit.findOrCreate({ where: { name: u.name }, defaults: u });
     }
 
     console.log('Seed complete!');

@@ -19,7 +19,7 @@
       <a href="index.html"><i class="fas fa-arrow-left"></i> Back to Shop</a>
       <a href="cart.html"><i class="fas fa-shopping-cart"></i> Cart <span id="cart-count" class="cart-badge" style="display:none">0</span></a>
       <span id="nav-admin" style="display:none"><a href="admin/dashboard.html"><i class="fas fa-cog"></i> Admin</a></span>
-      <span id="nav-auth"></span>
+      <div id="nav-auth"></div>
     </div>
   </nav>
 
@@ -40,12 +40,11 @@
         <span id="d-badge" class="badge badge-product"></span>
         <div class="detail-price" id="d-price"></div>
         <ul class="detail-meta">
-          <li><strong>Unit:</strong> <span id="d-unit"></span></li>
           <li><strong>Stock:</strong> <span id="d-stock"></span></li>
           <li><strong>Status:</strong> <span id="d-status"></span></li>
         </ul>
         <p class="detail-desc" id="d-desc"></p>
-        <div class="detail-actions">
+        <div class="detail-actions customer-cart-action">
           <label for="cart-qty">Quantity</label>
           <div class="detail-qty-row">
             <input type="number" id="cart-qty" class="form-control" value="1" min="1">

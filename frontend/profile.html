@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile | OfficeOne Store</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css">
+  <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      OfficeOne
+      <span>Office Supplies & Furniture</span>
+    </a>
+    <div class="nav-links">
+      <a href="cart.html"><i class="fas fa-shopping-cart"></i> Cart <span id="cart-count" class="cart-badge" style="display:none">0</span></a>
+      <span id="nav-admin" style="display:none"><a href="admin/dashboard.html"><i class="fas fa-cog"></i> Admin</a></span>
+      <div id="nav-auth"></div>
+    </div>
+  </nav>
+
+  <div class="form-wrap profile-wrap">
+    <h2 class="form-title"><i class="fas fa-user-circle"></i> My Profile</h2>
+    <div class="profile-preview">
+      <div id="profile-avatar" class="profile-avatar"><i class="fas fa-user"></i></div>
+      <div>
+        <strong id="profile-display-name">-</strong>
+        <p id="profile-email" class="text-muted small mb-0">-</p>
+      </div>
+    </div>
+
+    <form id="profile-form" enctype="multipart/form-data">
+      <div class="form-group">
+        <label>Username / Name *</label>
+        <input type="text" id="profile-name" name="name" class="form-control">
+        <span id="profile-name-error" class="error-msg">Name is required</span>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="profile-password" name="password" class="form-control" placeholder="Leave blank to keep current password">
+        <span id="profile-password-error" class="error-msg">Password must be at least 6 characters</span>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="profile-confirm-password" class="form-control">
+        <span id="profile-confirm-error" class="error-msg">Passwords do not match</span>
+      </div>
+      <div class="form-group">
+        <label>Profile Picture</label>
+        <input type="file" id="profile-image" name="profile_image" class="form-control-file" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+    </form>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>

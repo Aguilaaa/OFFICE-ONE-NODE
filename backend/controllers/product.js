@@ -3,6 +3,30 @@ const Product = db.Product;
 const ProductPhoto = db.ProductPhoto;
 const { Op } = require('sequelize');
 const { trashedWhere, softDeleteRow, restoreRow } = require('../utils/softDelete');
+const fs = require('fs/promises');
+const path = require('path');
+
+const attachPhotos = async (product, files = [], transaction) => {
+  const photos = [];
+  for (const file of files) {
+    photos.push(await ProductPhoto.create({
+      product_id: product.id,
+      photo_path: file.path.replace(/\\/g, '/'),
+      is_main: 0
+    }, { transaction }));
+  }
+
+  if (photos.length && !product.image_url) {
+    await ProductPhoto.update(
+      { is_main: 0 },
+      { where: { product_id: product.id }, transaction }
+    );
+    await photos[0].update({ is_main: 1 }, { transaction });
+    await product.update({ image_url: photos[0].photo_path }, { transaction });
+  }
+
+  return photos;
+};
 
 exports.getAllProducts = async (req, res) => {
   try {
@@ -62,12 +86,16 @@ exports.searchAutocomplete = async (req, res) => {
 };
 
 exports.createProduct = async (req, res) => {
+  const transaction = await db.sequelize.transaction();
   try {
     const data = { ...req.body, category: req.body.category || 'Product', stock_quantity: req.body.stock_quantity || 0, is_active: req.body.is_active ?? 1 };
-    if (req.file) data.image_url = req.file.path.replace(/\\/g, '/');
-    const product = await Product.create(data);
+    data.unit = data.unit || null;
+    const product = await Product.create(data, { transaction });
+    await attachPhotos(product, req.files || [], transaction);
+    await transaction.commit();
     return res.status(201).json({ success: true, product });
   } catch (err) {
+    await transaction.rollback();
     if (err.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({ error: 'Item code already exists' });
     }
@@ -76,12 +104,21 @@ exports.createProduct = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
+  const transaction = await db.sequelize.transaction();
   try {
     const updateData = { ...req.body };
-    if (req.file) updateData.image_url = req.file.path.replace(/\\/g, '/');
-    await Product.update(updateData, { where: { id: req.params.id } });
+    if (!Object.prototype.hasOwnProperty.call(updateData, 'unit')) updateData.unit = null;
+    const product = await Product.findByPk(req.params.id, { transaction });
+    if (!product) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    await product.update(updateData, { transaction });
+    await attachPhotos(product, req.files || [], transaction);
+    await transaction.commit();
     return res.status(200).json({ success: true });
   } catch (err) {
+    await transaction.rollback();
     if (err.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({ error: 'Item code already exists' });
     }
@@ -150,5 +187,58 @@ exports.setMainPhoto = async (req, res) => {
     return res.status(200).json({ success: true, image_url: photo.photo_path });
   } catch (err) {
     return res.status(500).json({ error: 'Error setting main photo' });
+  }
+};
+
+exports.deletePhoto = async (req, res) => {
+  const transaction = await db.sequelize.transaction();
+  try {
+    const photo = await ProductPhoto.findOne({
+      where: { id: req.params.photo_id, product_id: req.params.product_id },
+      transaction
+    });
+    if (!photo) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    const product = await Product.findByPk(req.params.product_id, { transaction });
+    if (!product) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const deletedPhotoPath = photo.photo_path;
+    const wasMain = product.image_url === photo.photo_path || Number(photo.is_main) === 1;
+    await photo.destroy({ transaction });
+
+    if (wasMain) {
+      const nextPhoto = await ProductPhoto.findOne({
+        where: { product_id: req.params.product_id },
+        order: [['createdAt', 'ASC']],
+        transaction
+      });
+
+      if (nextPhoto) {
+        await ProductPhoto.update(
+          { is_main: 0 },
+          { where: { product_id: req.params.product_id }, transaction }
+        );
+        await nextPhoto.update({ is_main: 1 }, { transaction });
+        await product.update({ image_url: nextPhoto.photo_path }, { transaction });
+      } else {
+        await product.update({ image_url: null }, { transaction });
+      }
+    }
+
+    await transaction.commit();
+
+    const filePath = path.join(__dirname, '..', deletedPhotoPath);
+    await fs.unlink(filePath).catch(() => {});
+
+    return res.status(200).json({ success: true, message: 'Photo deleted' });
+  } catch (err) {
+    await transaction.rollback();
+    return res.status(500).json({ error: 'Error deleting photo' });
   }
 };

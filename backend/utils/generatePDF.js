@@ -14,7 +14,7 @@ const generateReceipt = (transaction, totals) => {
     doc.text(`Order ID: #${transaction.id}`);
     doc.text(`Transaction No: ${transaction.transaction_no}`);
     doc.text(`Date: ${new Date(transaction.createdAt).toLocaleString()}`);
-    doc.text(`Customer: ${transaction.Customer ? transaction.Customer.name : 'Walk-in'}`);
+    doc.text(`User: ${transaction.User ? transaction.User.name : 'Walk-in'}`);
     doc.moveDown();
     doc.text('Items:', { underline: true });
 
@@ -27,9 +27,6 @@ const generateReceipt = (transaction, totals) => {
 
     doc.moveDown();
     doc.text(`Subtotal: PHP ${totals.subtotal.toFixed(2)}`);
-    if (parseFloat(transaction.discount) > 0) {
-      doc.text(`Discount: PHP ${parseFloat(transaction.discount).toFixed(2)}`);
-    }
     doc.fontSize(14).text(`Grand Total: PHP ${totals.grand_total.toFixed(2)}`, { align: 'right' });
     doc.end();
   });

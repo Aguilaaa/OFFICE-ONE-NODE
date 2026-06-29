@@ -58,11 +58,54 @@ exports.loginUser = async (req, res) => {
     await user.update({ token });
     return res.status(200).json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, profile_image: user.profile_image },
       token
     });
   } catch (err) {
     return res.status(500).json({ error: 'Error logging in' });
+  }
+};
+
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'name', 'email', 'role', 'profile_image', 'is_active', 'createdAt']
+    });
+    if (!user || !user.is_active) return res.status(404).json({ error: 'User not found' });
+    return res.status(200).json({ success: true, user });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error fetching profile' });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user || !user.is_active) return res.status(404).json({ error: 'User not found' });
+
+    const updateData = {};
+    if (req.body.name && req.body.name.trim()) updateData.name = req.body.name.trim();
+    if (req.body.password) {
+      if (req.body.password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
+      updateData.password = await bcrypt.hash(req.body.password, 10);
+    }
+    if (req.file) updateData.profile_image = req.file.path.replace(/\\/g, '/');
+
+    await user.update(updateData);
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profile_image: user.profile_image
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error updating profile' });
   }
 };
 

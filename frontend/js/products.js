@@ -1,6 +1,13 @@
 const API_BASE = 'http://localhost:4000';
 const API_URL = `${API_BASE}/api/v1`;
 const getToken = () => JSON.parse(sessionStorage.getItem('token'));
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
 
 const checkAdmin = () => {
   const user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -16,7 +23,6 @@ const validateProductForm = () => {
   [
     { id: '#item_code', err: '#item_code-error' },
     { id: '#name', err: '#name-error' },
-    { id: '#unit', err: '#unit-error' },
     { id: '#unit_price', err: '#unit_price-error' }
   ].forEach(({ id, err }) => {
     if (!$(id).val().trim()) { $(err).show(); ok = false; } else { $(err).hide(); }
@@ -52,6 +58,7 @@ const renderPhotoPreview = (product) => {
       <div class="photo-preview-item ${isMain ? 'is-main' : ''}">
         <img src="${API_BASE}/${ph.photo_path}" alt="Product photo">
         ${isMain ? '<span class="photo-main-badge">Featured</span>' : `<button type="button" class="btn btn-sm btn-outline-primary set-featured-btn set-main-btn" data-photo-id="${ph.id}">Set Featured</button>`}
+        <button type="button" class="btn btn-sm btn-danger delete-photo-btn" data-photo-id="${ph.id}">Delete</button>
       </div>
     `);
   });
@@ -72,28 +79,29 @@ $(document).ready(() => {
         orderable: false,
         render: (d, t, row) => {
           const src = getMainPhotoSrc(API_BASE, row);
-          if (src) return `<img src="${src}" width="40" height="40" style="object-fit:cover;border-radius:4px">`;
-          return '-';
+          if (src) return `<img class="table-product-img" src="${src}" alt="${escapeHtml(row.name || 'Product image')}">`;
+          return '<span class="table-product-placeholder"><i class="fas fa-image"></i></span>';
         }
       },
-      { data: 'item_code' },
-      { data: 'name' },
-      { data: 'category' },
-      { data: 'unit' },
+      { data: 'item_code', render: (d) => `<span class="item-code-pill">${escapeHtml(d)}</span>` },
+      { data: 'name', render: (d) => `<strong class="table-product-name">${escapeHtml(d)}</strong>` },
+      { data: 'category', render: (d) => `<span class="badge ${d === 'Service' ? 'badge-service' : 'badge-product'}">${escapeHtml(d)}</span>` },
       { data: 'unit_price', render: (d) => `PHP ${parseFloat(d).toFixed(2)}` },
       { data: 'stock_quantity' },
-      { data: 'is_active', render: (d) => d ? 'Active' : 'Inactive' },
+      { data: 'is_active', render: (d) => `<span class="status-pill ${d ? 'status-active' : 'status-inactive'}">${d ? 'Active' : 'Inactive'}</span>` },
       {
         data: null,
         orderable: false,
         render: (row) => {
           if (trashState.showTrashed) {
-            return `<button class="btn btn-success btn-sm restore-btn" data-id="${row.id}">Restore</button>`;
+            return `<div class="table-actions"><button class="btn btn-success btn-sm restore-btn" data-id="${row.id}"><i class="fas fa-trash-restore"></i> Restore</button></div>`;
           }
           return `
-          <button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}">Edit</button>
-          <button class="btn btn-primary btn-sm photo-btn" data-id="${row.id}" data-name="${row.name}">Photos</button>
-          <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}">Delete</button>
+          <div class="table-actions product-actions">
+            <button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-primary btn-sm photo-btn" data-id="${row.id}" data-name="${escapeHtml(row.name)}"><i class="fas fa-images"></i> Photos</button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}"><i class="fas fa-trash"></i> Delete</button>
+          </div>
         `;
         }
       }
@@ -106,6 +114,7 @@ $(document).ready(() => {
   $('#btn-add').click(() => {
     $('#product-form')[0].reset();
     $('#product-id').val('');
+    $('#productModal .modal-title').text('Add Product');
     $('#productModal').modal('show');
   });
 
@@ -116,11 +125,11 @@ $(document).ready(() => {
       $('#item_code').val(p.item_code);
       $('#name').val(p.name);
       $('#category').val(p.category);
-      $('#unit').val(p.unit);
       $('#unit_price').val(p.unit_price);
       $('#stock_quantity').val(p.stock_quantity);
       $('#description').val(p.description || '');
       $('#is_active').val(p.is_active);
+      $('#productModal .modal-title').text('Edit Product');
       $('#productModal').modal('show');
     });
   });
@@ -184,6 +193,29 @@ $(document).ready(() => {
         productTable.ajax.reload(null, false);
       },
       error: (xhr) => Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error')
+    });
+  });
+
+  $(document).on('click', '.delete-photo-btn', function () {
+    const productId = $('#photo-product-id').val();
+    const photoId = $(this).data('photo-id');
+    Swal.fire({
+      title: 'Delete photo?',
+      text: 'This uploaded image will be removed from the product.',
+      icon: 'warning',
+      showCancelButton: true
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      $.ajax({
+        url: `${API_URL}/products/${productId}/photos/${photoId}`,
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        success: () => {
+          $.get(`${API_URL}/products/${productId}`, (res) => renderPhotoPreview(res.result));
+          productTable.ajax.reload(null, false);
+        },
+        error: (xhr) => Swal.fire('Error', xhr.responseJSON?.error || 'Delete failed', 'error')
+      });
     });
   });
 

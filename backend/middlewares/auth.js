@@ -11,6 +11,7 @@ exports.isAuthenticatedUser = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.body = req.body || {};
     req.body.user = { id: decoded.id };
+    req.user = { id: decoded.id };
     next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });
@@ -31,6 +32,7 @@ exports.isAdmin = async (req, res, next) => {
     }
     req.body = req.body || {};
     req.body.user = { id: decoded.id, role: user.role };
+    req.user = { id: decoded.id, role: user.role };
     next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });

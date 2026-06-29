@@ -39,17 +39,6 @@ const seed = async () => {
       await db.Product.findOrCreate({ where: { item_code: p.item_code }, defaults: { ...p, is_active: 1 } });
     }
 
-    const customers = [
-      { customer_code: 'CUST-001', name: 'ABC Corporation', contact_no: '09171234567', email: 'orders@abc.com', address: '123 Business Ave, Makati' },
-      { customer_code: 'CUST-002', name: 'XYZ Trading', contact_no: '09189876543', email: 'procurement@xyz.com', address: '456 Commerce St, Quezon City' },
-      { customer_code: 'CUST-003', name: 'Greenfield School', contact_no: '0288812345', email: 'admin@greenfield.edu', address: '789 Education Blvd, Pasig' },
-      { customer_code: 'CUST-004', name: 'Walk-in Customer', contact_no: '09000000000', email: null, address: null }
-    ];
-
-    for (const c of customers) {
-      await db.Customer.findOrCreate({ where: { customer_code: c.customer_code }, defaults: { ...c, is_active: 1 } });
-    }
-
     console.log('Seed complete!');
     console.log('Admin login: admin@officeone.com / admin123');
     console.log('Customer login: customer@officeone.com / customer123');

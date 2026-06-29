@@ -23,8 +23,7 @@ const renderSummary = () => {
 
   const subtotal = Cart.subtotal();
   $('#checkout-subtotal').text(`PHP ${subtotal.toFixed(2)}`);
-  const discount = parseFloat($('#discount').val()) || 0;
-  $('#checkout-total').text(`PHP ${Math.max(0, subtotal - discount).toFixed(2)}`);
+  $('#checkout-total').text(`PHP ${subtotal.toFixed(2)}`);
 };
 
 const validateCheckout = () => {
@@ -33,17 +32,17 @@ const validateCheckout = () => {
     Swal.fire({ icon: 'warning', text: 'Your cart is empty.' });
     return false;
   }
-  const discount = parseFloat($('#discount').val());
-  if ($('#discount').val() && (isNaN(discount) || discount < 0)) {
-    $('#discount-error').show();
-    ok = false;
-  } else {
-    $('#discount-error').hide();
-  }
   return ok;
 };
 
 $(document).ready(() => {
+  if (typeof isAdminUser === 'function' && isAdminUser()) {
+    Cart.clear();
+    Swal.fire({ icon: 'info', text: 'Admin accounts do not use cart.' })
+      .then(() => window.location.href = 'admin/dashboard.html');
+    return;
+  }
+
   if (!getToken()) {
     window.location.href = 'login.html?redirect=checkout.html';
     return;
@@ -51,16 +50,12 @@ $(document).ready(() => {
 
   renderSummary();
 
-  $('#discount').on('input', renderSummary);
-
   $('#checkout-form').submit(function (e) {
     e.preventDefault();
     if (!validateCheckout()) return;
 
-    const discount = parseFloat($('#discount').val()) || 0;
     const payload = {
       notes: $('#notes').val().trim(),
-      discount,
       items: Cart.toOrderItems()
     };
 

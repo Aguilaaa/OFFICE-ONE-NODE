@@ -6,17 +6,12 @@ const db = {};
 db.User = require('./user')(sequelize, DataTypes);
 db.Product = require('./product')(sequelize, DataTypes);
 db.ProductPhoto = require('./productPhoto')(sequelize, DataTypes);
-db.Customer = require('./customer')(sequelize, DataTypes);
 db.Transaction = require('./transaction')(sequelize, DataTypes);
 db.TransactionItem = require('./transactionItem')(sequelize, DataTypes);
 db.Category = require('./category')(sequelize, DataTypes);
-db.Unit = require('./unit')(sequelize, DataTypes);
 
 db.Product.hasMany(db.ProductPhoto, { foreignKey: 'product_id', onDelete: 'CASCADE' });
 db.ProductPhoto.belongsTo(db.Product, { foreignKey: 'product_id' });
-
-db.Customer.hasMany(db.Transaction, { foreignKey: 'customer_id' });
-db.Transaction.belongsTo(db.Customer, { foreignKey: 'customer_id' });
 
 db.User.hasMany(db.Transaction, { foreignKey: 'created_by' });
 db.Transaction.belongsTo(db.User, { foreignKey: 'created_by' });
