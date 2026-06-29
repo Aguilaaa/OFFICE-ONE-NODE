@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | OfficeOne Store</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css">
+  <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      OfficeOne
+      <span>Office Supplies & Furniture</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html"><i class="fas fa-home"></i> Home</a>
+      <a href="cart.html"><i class="fas fa-shopping-cart"></i> Cart <span id="cart-count" class="cart-badge">0</span></a>
+      <span id="nav-admin" style="display:none"><a href="admin/dashboard.html"><i class="fas fa-cog"></i> Admin</a></span>
+      <span id="nav-auth"></span>
+    </div>
+  </nav>
+
+  <div class="cart-wrap">
+    <h1 class="mb-4"><i class="fas fa-credit-card"></i> Checkout</h1>
+    <div class="checkout-grid">
+      <div class="checkout-form-card">
+        <form id="checkout-form">
+          <h3>Order Details</h3>
+          <div class="form-group">
+            <label>Notes (optional)</label>
+            <textarea id="notes" class="form-control" rows="3" placeholder="Delivery instructions, PO number, etc."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Discount (PHP, optional)</label>
+            <input type="number" id="discount" class="form-control" min="0" step="0.01" value="0">
+            <span id="discount-error" class="error-msg">Enter a valid discount amount</span>
+          </div>
+          <button type="submit" id="btn-place-order" class="btn btn-primary btn-lg">
+            <i class="fas fa-check"></i> Place Order
+          </button>
+          <a href="cart.html" class="btn btn-link mt-2">Back to Cart</a>
+        </form>
+      </div>
+      <div class="cart-totals-card">
+        <h3>Your Order</h3>
+        <div id="checkout-items" class="checkout-items"></div>
+        <div class="cart-total-row">
+          <span>Subtotal</span>
+          <span id="checkout-subtotal">PHP 0.00</span>
+        </div>
+        <div class="cart-total-row cart-total-final">
+          <span>Total</span>
+          <span id="checkout-total">PHP 0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/checkout.js"></script>
+</body>
+</html>

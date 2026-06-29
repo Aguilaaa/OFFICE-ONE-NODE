@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OfficeOne Store | Office Supplies & Furniture</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css">
+  <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      OfficeOne
+      <span>Office Supplies & Furniture</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html"><i class="fas fa-home"></i> Home</a>
+      <a href="cart.html"><i class="fas fa-shopping-cart"></i> Cart <span id="cart-count" class="cart-badge" style="display:none">0</span></a>
+      <span id="nav-admin" style="display:none"><a href="admin/dashboard.html"><i class="fas fa-cog"></i> Admin</a></span>
+      <span id="nav-auth"></span>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>Your One-Stop Office Shop</h1>
+    <p>Browse office supplies, furniture, and services for your workplace</p>
+    <div class="search-wrap">
+      <input type="text" id="search-input" class="search-input" placeholder="Search products by name or item code...">
+      <button id="btn-search" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+    </div>
+    <div class="mt-3">
+      <button class="btn btn-primary filter-btn" data-category="all">All</button>
+      <button class="btn btn-secondary filter-btn" data-category="Product">Products</button>
+      <button class="btn btn-secondary filter-btn" data-category="Service">Services</button>
+    </div>
+  </section>
+
+  <div id="product-grid" class="product-grid">
+    <p class="text-center w-100 p-4 text-muted" id="loading-msg"><i class="fas fa-spinner fa-spin"></i> Loading products...</p>
+  </div>
+  <div id="pagination" class="pagination-wrap"></div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/main-photo.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

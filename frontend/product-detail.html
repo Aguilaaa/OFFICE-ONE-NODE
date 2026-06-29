@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Details | OfficeOne Store</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css">
+  <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      OfficeOne
+      <span>Office Supplies & Furniture</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html"><i class="fas fa-arrow-left"></i> Back to Shop</a>
+      <a href="cart.html"><i class="fas fa-shopping-cart"></i> Cart <span id="cart-count" class="cart-badge" style="display:none">0</span></a>
+      <span id="nav-admin" style="display:none"><a href="admin/dashboard.html"><i class="fas fa-cog"></i> Admin</a></span>
+      <span id="nav-auth"></span>
+    </div>
+  </nav>
+
+  <div class="detail-wrap" id="detail-loading">
+    <p class="text-muted text-center py-5"><i class="fas fa-spinner fa-spin"></i> Loading product...</p>
+  </div>
+
+  <div class="detail-wrap d-none" id="detail-content">
+    <div class="detail-grid">
+      <div class="detail-gallery">
+        <div id="main-image" class="main-image"></div>
+        <p id="featured-admin-hint" class="featured-hint d-none">Admin: click <strong>Set Featured</strong> to choose the shop display photo.</p>
+        <div id="thumb-row" class="thumb-row"></div>
+      </div>
+      <div class="detail-info">
+        <div class="product-code" id="d-code"></div>
+        <h1 id="d-name"></h1>
+        <span id="d-badge" class="badge badge-product"></span>
+        <div class="detail-price" id="d-price"></div>
+        <ul class="detail-meta">
+          <li><strong>Unit:</strong> <span id="d-unit"></span></li>
+          <li><strong>Stock:</strong> <span id="d-stock"></span></li>
+          <li><strong>Status:</strong> <span id="d-status"></span></li>
+        </ul>
+        <p class="detail-desc" id="d-desc"></p>
+        <div class="detail-actions">
+          <label for="cart-qty">Quantity</label>
+          <div class="detail-qty-row">
+            <input type="number" id="cart-qty" class="form-control" value="1" min="1">
+            <button type="button" id="btn-add-cart" class="btn btn-primary">
+              <i class="fas fa-cart-plus"></i> Add to Cart
+            </button>
+          </div>
+          <a href="cart.html" class="btn btn-outline-primary mt-2">View Cart</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/main-photo.js"></script>
+  <script src="js/product-detail.js"></script>
+</body>
+</html>

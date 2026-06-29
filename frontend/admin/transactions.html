@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders | OfficeOne Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/dataTables.bootstrap4.min.css">
+  <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">OfficeOne Admin</div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="products.html">Products (MP1)</a>
+        <a href="categories.html">Categories</a>
+        <a href="transactions.html" class="active">Orders</a>
+        <a href="users.html">Users</a>
+        <a href="../index.html">Back to Site</a>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Orders <small class="text-muted">(1 order ID, many products)</small></h2>
+        <div>
+          <button id="btn-trash" type="button" class="btn btn-outline-secondary mr-2"><i class="fas fa-trash-restore"></i> Show Deleted</button>
+          <button id="btn-add" class="btn btn-primary">New Order</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-body">
+        <table id="orders-table" class="table table-striped table-bordered" style="width:100%"></table>
+      </div></div>
+    </main>
+  </div>
+
+  <div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="order-form">
+          <div class="modal-header"><h5 class="modal-title">Order</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+          <div class="modal-body">
+            <input type="hidden" id="order-id">
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label>Transaction No *</label>
+                <input id="transaction_no" class="form-control">
+                <span id="transaction_no-error" class="error-msg">Required</span>
+              </div>
+              <div class="form-group col-md-4">
+                <label>Customer</label>
+                <select id="customer_id" class="form-control"><option value="">Walk-in</option></select>
+              </div>
+              <div class="form-group col-md-4">
+                <label>Discount (PHP)</label>
+                <input id="discount" type="number" step="0.01" class="form-control" value="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <textarea id="notes" class="form-control" rows="2"></textarea>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Products (many-to-many)</strong>
+              <button type="button" id="btn-add-line" class="btn btn-secondary btn-sm">Add Product</button>
+            </div>
+            <div class="form-row mb-1 text-muted small">
+              <div class="col-6">Product</div><div class="col-3">Qty</div><div class="col-2">Unit Price</div>
+            </div>
+            <div id="line-items"></div>
+            <span id="items-error" class="error-msg">Add at least one product</span>
+          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-primary">Save Draft</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.22/js/dataTables.bootstrap4.min.js"></script>
+  <script src="../js/trash-admin.js"></script>
+  <script src="../js/transactions.js"></script>
+</body>
+</html>
