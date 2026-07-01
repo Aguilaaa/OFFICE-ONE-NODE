@@ -31,9 +31,13 @@ const updateNav = () => {
     if (user.role === 'admin') {
       $admin.show();
       $cartLinks.hide();
+      $('#nav-orders').remove();
       if (window.Cart) Cart.clear();
     } else {
       $cartLinks.show();
+      if (!$('#nav-orders').length) {
+        $cartLinks.after('<a href="my-orders.html" id="nav-orders"><i class="fas fa-box"></i> My Orders</a>');
+      }
     }
   } else {
     $auth.html(`
@@ -42,6 +46,7 @@ const updateNav = () => {
     `);
     $admin.hide();
     $cartLinks.show();
+    $('#nav-orders').remove();
   }
   if (window.Cart) Cart.updateBadge();
 };

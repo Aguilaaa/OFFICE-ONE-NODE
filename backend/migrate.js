@@ -46,6 +46,13 @@ const db = require('./models');
         allowNull: true
       }).catch(() => {});
     }
+    if (!userCols.email_verified_at) {
+      await qi.addColumn('users', 'email_verified_at', {
+        type: db.Sequelize.DATE,
+        allowNull: true
+      }).catch(() => {});
+    }
+    await db.sequelize.query('UPDATE users SET email_verified_at = NOW() WHERE email_verified_at IS NULL').catch(() => {});
 
     await db.sequelize.query("UPDATE users SET role = 'customer' WHERE role = 'staff' OR role = '' OR role IS NULL").catch(() => {});
     await db.sequelize.query(

@@ -25,8 +25,18 @@ const showGridMessage = (html) => {
 const productCardHtml = (p) => {
   const img = productCardImage(p);
   const badge = p.category === 'Service' ? 'badge-service' : 'badge-product';
+  const outOfStock = Cart.isOutOfStock(p);
+  const stockLabel = p.category === 'Service'
+    ? 'Service item'
+    : outOfStock
+      ? '<span class="stock-out">Out of Stock</span>'
+      : `Stock: ${p.stock_quantity}`;
+  const btnClass = outOfStock ? 'btn btn-secondary btn-sm btn-block add-cart-btn' : 'btn btn-primary btn-sm btn-block add-cart-btn';
+  const btnLabel = outOfStock ? 'Out of Stock' : 'Add to Cart';
+  const btnDisabled = outOfStock ? 'disabled' : '';
+
   return `
-    <div class="product-card">
+    <div class="product-card ${outOfStock ? 'product-card--out-of-stock' : ''}">
       <a href="product-detail.html?id=${p.id}" class="product-card-link">
         ${img}
         <div class="card-body">
@@ -34,11 +44,11 @@ const productCardHtml = (p) => {
           <div class="product-name">${p.name}</div>
           <span class="badge ${badge}">${p.category}</span>
           <div class="product-price">PHP ${parseFloat(p.unit_price).toFixed(2)}</div>
-          <small class="text-muted">Stock: ${p.stock_quantity}</small>
+          <small class="text-muted">${stockLabel}</small>
         </div>
       </a>
       <div class="card-actions customer-cart-action">
-        <button type="button" class="btn btn-primary btn-sm btn-block add-cart-btn" data-id="${p.id}">Add to Cart</button>
+        <button type="button" class="${btnClass}" data-id="${p.id}" ${btnDisabled}>${btnLabel}</button>
       </div>
     </div>
   `;
@@ -211,7 +221,15 @@ $(document).ready(() => {
     const id = parseInt($(this).data('id'), 10);
     const product = allProducts.find((p) => p.id === id);
     if (!product) return;
-    Cart.add(product, 1);
+    if (Cart.isOutOfStock(product)) {
+      Swal.fire({ icon: 'warning', title: 'Out of Stock', text: `${product.name} is currently unavailable.` });
+      return;
+    }
+    const result = Cart.add(product, 1);
+    if (!result.ok) {
+      Swal.fire({ icon: 'warning', title: 'Cannot add to cart', text: result.message });
+      return;
+    }
     Swal.fire({ icon: 'success', title: 'Added to cart', timer: 1200, showConfirmButton: false });
   });
 });

@@ -1,6 +1,5 @@
 const db = require('../models');
-const sendEmail = require('../utils/sendEmail');
-const { generateReceipt } = require('../utils/generatePDF');
+const { sendOrderEmail, queueOrderEmail, resolveEmailType } = require('../utils/orderEmail');
 const { getOrderTotals, attachTotals, getIncomeByDateRange } = require('../utils/orderQuery');
 const { trashedWhere, softDeleteRow, restoreRow } = require('../utils/softDelete');
 const { Op } = require('sequelize');
@@ -10,7 +9,7 @@ const includeOrder = [
   {
     model: db.Product,
     through: { attributes: ['quantity', 'unit_price'] },
-    attributes: ['id', 'name', 'item_code']
+    attributes: ['id', 'name', 'item_code', 'description', 'unit']
   }
 ];
 const VALID_STATUSES = ['Pending', 'Completed', 'Cancelled'];
@@ -73,6 +72,35 @@ const syncStockForStatus = async (transaction, nextStatus, options = {}) => {
   }
 };
 
+exports.getMyOrders = async (req, res) => {
+  try {
+    const transactions = await db.Transaction.findAll({
+      where: { created_by: req.body.user.id, deleted_at: null },
+      include: includeOrder,
+      order: [['createdAt', 'DESC']]
+    });
+    const rows = await attachTotals(db.sequelize, transactions);
+    return res.status(200).json({ rows });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error fetching orders' });
+  }
+};
+
+exports.getMyOrder = async (req, res) => {
+  try {
+    const transaction = await db.Transaction.findOne({
+      where: { id: req.params.id, created_by: req.body.user.id, deleted_at: null },
+      include: includeOrder
+    });
+    if (!transaction) return res.status(404).json({ error: 'Order not found' });
+    const result = transaction.toJSON();
+    Object.assign(result, await getOrderTotals(db.sequelize, transaction));
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error fetching order' });
+  }
+};
+
 exports.getAllTransactions = async (req, res) => {
   try {
     const { status, start_date, end_date, trashed } = req.query;
@@ -89,6 +117,26 @@ exports.getAllTransactions = async (req, res) => {
   }
 };
 
+const validateCheckoutStock = async (items, options = {}) => {
+  if (!items || items.length === 0) throw new Error('Cart is empty');
+
+  for (const item of items) {
+    const product = await db.Product.findByPk(item.product_id, {
+      transaction: options.transaction,
+      lock: options.transaction ? options.transaction.LOCK.UPDATE : undefined
+    });
+    if (!product || product.deleted_at || !product.is_active) {
+      throw new Error(`${product?.name || 'An item'} is no longer available.`);
+    }
+    if (product.category !== 'Product') continue;
+
+    const quantity = parseInt(item.quantity, 10);
+    const stock = parseInt(product.stock_quantity || 0, 10);
+    if (stock <= 0) throw new Error(`${product.name} is out of stock.`);
+    if (quantity > stock) throw new Error(`Only ${stock} left in stock for ${product.name}.`);
+  }
+};
+
 exports.checkout = async (req, res) => {
   const dbTx = await db.sequelize.transaction();
   try {
@@ -98,19 +146,32 @@ exports.checkout = async (req, res) => {
       await rollbackIfOpen(dbTx);
       return res.status(403).json({ error: 'Admin accounts cannot use cart checkout' });
     }
+    await validateCheckoutStock(items || [], { transaction: dbTx });
     const transaction = await db.Transaction.create({
       transaction_no: `WEB-${Date.now()}-${req.body.user.id}`,
       notes: notes || null,
-      status: 'Completed',
+      status: 'Pending',
+      stock_deducted: 0,
       created_by: req.body.user.id
     }, { transaction: dbTx });
     await saveItems(transaction, items || [], { transaction: dbTx });
-    await syncStockForStatus(transaction, 'Completed', { transaction: dbTx });
     await dbTx.commit();
     const full = await db.Transaction.findByPk(transaction.id, { include: includeOrder });
     const totals = await getOrderTotals(db.sequelize, full);
+
+    let emailSent = false;
+    try {
+      emailSent = await sendOrderEmail(full, totals, 'confirmation');
+    } catch (mailErr) {
+      console.error('Order confirmation email failed:', mailErr.message);
+    }
+
     return res.status(201).json({
       success: true,
+      emailSent,
+      message: emailSent
+        ? 'Order placed. A confirmation email with PDF has been sent to your inbox.'
+        : 'Order placed. It will stay in processing until an admin marks it completed.',
       transaction: { ...full.toJSON(), ...totals }
     });
   } catch (err) {
@@ -119,7 +180,11 @@ exports.checkout = async (req, res) => {
       return res.status(409).json({ error: 'Order number conflict. Please try again.' });
     }
     await rollbackIfOpen(dbTx);
-    return res.status(500).json({ error: err.message || 'Error placing order' });
+    const msg = err.message || 'Error placing order';
+    if (/stock|available|empty/i.test(msg)) {
+      return res.status(400).json({ error: msg });
+    }
+    return res.status(500).json({ error: msg });
   }
 };
 
@@ -165,6 +230,8 @@ exports.updateTransaction = async (req, res) => {
     }
 
     const previousStatus = normalizeStatus(transaction.status);
+    const nextStatus = status ? normalizeStatus(status) : previousStatus;
+    const statusChanged = Boolean(status) && nextStatus !== previousStatus;
     const canUpdateItems = previousStatus !== 'Completed';
     const updateData = { notes };
     if (status) updateData.status = status;
@@ -174,23 +241,16 @@ exports.updateTransaction = async (req, res) => {
     await syncStockForStatus(transaction, status || previousStatus, { transaction: dbTx });
     await dbTx.commit();
 
-    if (status === 'Completed' && previousStatus !== 'Completed') {
-      const full = await db.Transaction.findByPk(id, { include: includeOrder });
-      const totals = await getOrderTotals(db.sequelize, full);
-      try {
-        const pdfBuffer = await generateReceipt(full, totals);
-        if (full.User?.email) {
-          await sendEmail({
-            email: full.User.email,
-            subject: `Receipt - ${full.transaction_no} | OfficeOne Store`,
-            html: `<p>Your order <strong>${full.transaction_no}</strong> is completed. Receipt attached.</p>`,
-            attachments: [{ filename: `receipt-${full.transaction_no}.pdf`, content: pdfBuffer }]
-          });
-        }
-      } catch (e) { /* email optional */ }
+    if (statusChanged) {
+      const emailType = resolveEmailType(nextStatus, previousStatus);
+      queueOrderEmail(id, emailType, previousStatus);
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({
+      success: true,
+      status: nextStatus,
+      emailQueued: statusChanged
+    });
   } catch (err) {
     await rollbackIfOpen(dbTx);
     return res.status(500).json({ error: err.message || 'Error updating transaction' });

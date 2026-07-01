@@ -12,15 +12,15 @@ const seed = async () => {
 
     const [admin] = await db.User.findOrCreate({
       where: { email: 'admin@officeone.com' },
-      defaults: { name: 'Admin User', email: 'admin@officeone.com', password: adminPass, role: 'admin', is_active: 1 }
+      defaults: { name: 'Admin User', email: 'admin@officeone.com', password: adminPass, role: 'admin', is_active: 1, email_verified_at: new Date() }
     });
-    await admin.update({ password: adminPass, role: 'admin', is_active: 1 });
+    await admin.update({ password: adminPass, role: 'admin', is_active: 1, email_verified_at: new Date() });
 
     const [customer] = await db.User.findOrCreate({
       where: { email: 'customer@officeone.com' },
-      defaults: { name: 'Customer User', email: 'customer@officeone.com', password: customerPass, role: 'customer', is_active: 1 }
+      defaults: { name: 'Customer User', email: 'customer@officeone.com', password: customerPass, role: 'customer', is_active: 1, email_verified_at: new Date() }
     });
-    await customer.update({ password: customerPass, role: 'customer', is_active: 1 });
+    await customer.update({ password: customerPass, role: 'customer', is_active: 1, email_verified_at: new Date() });
 
     await db.sequelize.query("UPDATE users SET role = 'customer' WHERE role = 'staff' OR role = '' OR role IS NULL").catch(() => {});
     await db.User.update(

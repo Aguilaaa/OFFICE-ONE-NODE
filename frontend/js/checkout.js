@@ -27,12 +27,22 @@ const renderSummary = () => {
 };
 
 const validateCheckout = () => {
-  let ok = true;
-  if (Cart.get().length === 0) {
+  const items = Cart.get();
+  if (items.length === 0) {
     Swal.fire({ icon: 'warning', text: 'Your cart is empty.' });
     return false;
   }
-  return ok;
+  const outOfStockItem = items.find((item) => Cart.isOutOfStock(item));
+  if (outOfStockItem) {
+    Swal.fire({ icon: 'warning', title: 'Out of Stock', text: `${outOfStockItem.name} is out of stock.` });
+    return false;
+  }
+  const overQty = items.find((item) => Cart.tracksStock(item) && item.quantity > parseInt(item.stock_quantity, 10));
+  if (overQty) {
+    Swal.fire({ icon: 'warning', text: `Only ${overQty.stock_quantity} available for ${overQty.name}.` });
+    return false;
+  }
+  return true;
 };
 
 $(document).ready(() => {
@@ -48,7 +58,17 @@ $(document).ready(() => {
     return;
   }
 
-  renderSummary();
+  $.get(`${API_URL}/products`, (data) => {
+    const productMap = {};
+    (data.rows || []).forEach((p) => { productMap[p.id] = p; });
+    const { removed } = Cart.syncStock(productMap);
+    if (removed.length) {
+      Swal.fire({ icon: 'info', title: 'Cart updated', text: `Removed out-of-stock: ${removed.join(', ')}` })
+        .then(() => renderSummary());
+      return;
+    }
+    renderSummary();
+  }).fail(() => renderSummary());
 
   $('#checkout-form').submit(function (e) {
     e.preventDefault();
@@ -73,7 +93,9 @@ $(document).ready(() => {
         sessionStorage.setItem('lastOrder', JSON.stringify({
           transaction_no: order.transaction_no,
           id: order.id,
-          grand_total: order.grand_total
+          grand_total: order.grand_total,
+          status: order.status || 'Pending',
+          emailSent: res.emailSent
         }));
         window.location.href = 'order-success.html';
       },

@@ -22,6 +22,44 @@ let orderTable;
 const trashState = { showTrashed: false };
 const normalizeStatus = (status) => status === 'Draft' ? 'Pending' : status;
 
+const reloadOrdersTable = (keepPage = true) => {
+  if (!orderTable) return;
+  orderTable.ajax.reload(null, keepPage);
+};
+
+const patchOrderRow = (id, patch) => {
+  if (!orderTable) return false;
+  let updated = false;
+  orderTable.rows().every(function () {
+    const data = this.data();
+    if (Number(data.id) === Number(id)) {
+      this.data({ ...data, ...patch });
+      updated = true;
+      return false;
+    }
+  });
+  if (updated) orderTable.draw(false);
+  return updated;
+};
+
+const statusCellHtml = (status) => {
+  const normalized = normalizeStatus(status);
+  const label = normalized === 'Pending' ? 'Processing' : normalized;
+  return `<span class="order-status status-${normalized.toLowerCase()}">${escapeHtml(label)}</span>`;
+};
+
+const actionsCellHtml = (row) => {
+  if (trashState.showTrashed) {
+    return `<div class="table-actions"><button class="btn btn-success btn-sm restore-btn" data-id="${row.id}"><i class="fas fa-trash-restore"></i> Restore</button></div>`;
+  }
+  let btns = `<div class="table-actions order-actions"><button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}"><i class="fas fa-edit"></i> Edit</button>`;
+  if (normalizeStatus(row.status) === 'Pending') {
+    btns += ` <button class="btn btn-primary btn-sm complete-btn" data-id="${row.id}"><i class="fas fa-check"></i> Complete</button>`;
+  }
+  btns += ` <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}"><i class="fas fa-trash"></i> Delete</button></div>`;
+  return btns;
+};
+
 const addLineRow = (productId = '', qty = 1) => {
   const opts = products.map((p) =>
     `<option value="${p.id}" data-price="${p.unit_price}" ${p.id == productId ? 'selected' : ''}>${escapeHtml(p.item_code)} - ${escapeHtml(p.name)}</option>`
@@ -69,7 +107,9 @@ $(document).ready(() => {
     ajax: {
       url: `${API_URL}/transactions`,
       dataSrc: 'rows',
-      headers: { Authorization: `Bearer ${getToken()}` }
+      beforeSend(xhr) {
+        xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
+      }
     },
     columns: [
       { data: 'id', title: 'Order ID', render: (d) => `<span class="order-id-pill">#${escapeHtml(d)}</span>` },
@@ -88,10 +128,7 @@ $(document).ready(() => {
       {
         data: 'status',
         title: 'Status',
-        render: (d) => {
-          const status = normalizeStatus(d);
-          return `<span class="order-status status-${status.toLowerCase()}">${escapeHtml(status)}</span>`;
-        }
+        render: (d) => statusCellHtml(d)
       },
       { data: 'grand_total', title: 'Total', render: (d) => `<span class="amount-pill">PHP ${parseFloat(d || 0).toFixed(2)}</span>` },
       { data: 'createdAt', title: 'Date', render: (d) => `<span class="date-cell">${new Date(d).toLocaleDateString()}</span>` },
@@ -99,17 +136,7 @@ $(document).ready(() => {
         data: null,
         title: 'Actions',
         orderable: false,
-        render: (row) => {
-          if (trashState.showTrashed) {
-            return `<div class="table-actions"><button class="btn btn-success btn-sm restore-btn" data-id="${row.id}"><i class="fas fa-trash-restore"></i> Restore</button></div>`;
-          }
-          let btns = `<div class="table-actions order-actions"><button class="btn btn-secondary btn-sm edit-btn" data-id="${row.id}"><i class="fas fa-edit"></i> Edit</button>`;
-          if (normalizeStatus(row.status) === 'Pending') {
-            btns += ` <button class="btn btn-primary btn-sm complete-btn" data-id="${row.id}"><i class="fas fa-check"></i> Complete</button>`;
-          }
-          btns += ` <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}"><i class="fas fa-trash"></i> Delete</button></div>`;
-          return btns;
-        }
+        render: (row) => actionsCellHtml(row)
       }
     ]
   });
@@ -171,22 +198,43 @@ $(document).ready(() => {
       contentType: 'application/json',
       data: JSON.stringify(payload),
       headers: { Authorization: `Bearer ${getToken()}` },
-      success: () => { $('#orderModal').modal('hide'); orderTable.ajax.reload(); },
+      success: (res) => {
+        $('#orderModal').modal('hide');
+        if (res.emailQueued) {
+          Swal.fire({ icon: 'success', title: 'Order updated', text: 'Customer will receive an email about the status change.', timer: 1800, showConfirmButton: false });
+        }
+        reloadOrdersTable(false);
+      },
       error: (xhr) => Swal.fire('Error', xhr.responseJSON?.error || 'Save failed', 'error')
     });
   });
 
   $(document).on('click', '.complete-btn', function () {
     const id = $(this).data('id');
+    const $btn = $(this);
     Swal.fire({ title: 'Mark as Completed?', icon: 'question', showCancelButton: true }).then((r) => {
       if (!r.isConfirmed) return;
+
+      $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
       $.ajax({
         url: `${API_URL}/transactions/${id}`,
         method: 'PUT',
         contentType: 'application/json',
         data: JSON.stringify({ status: 'Completed' }),
         headers: { Authorization: `Bearer ${getToken()}` },
-        success: () => orderTable.ajax.reload()
+        success: (res) => {
+          patchOrderRow(id, { status: res.status || 'Completed' });
+          const msg = res.emailQueued
+            ? 'Order completed. Customer will receive an email update.'
+            : 'Order completed';
+          Swal.fire({ icon: 'success', title: 'Order completed', text: msg, timer: 1800, showConfirmButton: false });
+          reloadOrdersTable(true);
+        },
+        error: (xhr) => {
+          $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Complete');
+          Swal.fire('Error', xhr.responseJSON?.error || 'Could not complete order', 'error');
+        }
       });
     });
   });
@@ -198,7 +246,7 @@ $(document).ready(() => {
       $.ajax({
         url: `${API_URL}/transactions/${id}`, method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
-        success: () => orderTable.ajax.reload()
+        success: () => reloadOrdersTable(true),
       });
     });
   });

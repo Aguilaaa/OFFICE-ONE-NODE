@@ -76,17 +76,35 @@ const buildGallery = (product) => {
 
 const renderProduct = (p) => {
   document.title = `${p.name} | OfficeOne Store`;
+  const outOfStock = Cart.isOutOfStock(p);
+  const maxQty = Cart.maxQuantity(p, 0);
+
   $('#d-code').text(p.item_code);
   $('#d-name').text(p.name);
   $('#d-badge').text(p.category).attr('class', `badge ${p.category === 'Service' ? 'badge-service' : 'badge-product'}`);
   $('#d-price').text(`PHP ${parseFloat(p.unit_price).toFixed(2)}`);
-  $('#d-stock').text(p.stock_quantity);
-  $('#d-status').text(Number(p.is_active) ? 'Available' : 'Unavailable');
+  if (p.category === 'Service') {
+    $('#d-stock').text('N/A (Service)').removeClass('text-danger stock-out');
+  } else if (outOfStock) {
+    $('#d-stock').html('<span class="stock-out">Out of Stock</span>').addClass('text-danger');
+  } else {
+    $('#d-stock').text(p.stock_quantity).removeClass('text-danger stock-out');
+  }
+  $('#d-status').text(outOfStock ? 'Out of Stock' : (Number(p.is_active) ? 'Available' : 'Unavailable'));
   $('#d-desc').text(p.description || 'No description provided.');
   if (isAdmin()) {
     $('.customer-cart-action').hide();
   } else {
     $('.customer-cart-action').show();
+    const $btn = $('#btn-add-cart');
+    const $qty = $('#cart-qty');
+    if (outOfStock) {
+      $btn.prop('disabled', true).html('<i class="fas fa-ban"></i> Out of Stock');
+      $qty.prop('disabled', true).val(1);
+    } else {
+      $btn.prop('disabled', false).html('<i class="fas fa-cart-plus"></i> Add to Cart');
+      $qty.prop('disabled', false).attr('max', maxQty).val(Math.min(parseInt($qty.val(), 10) || 1, maxQty));
+    }
   }
   buildGallery(p);
   $('#detail-loading').addClass('d-none');
@@ -146,7 +164,15 @@ $(document).ready(() => {
       Swal.fire({ icon: 'warning', text: 'Quantity must be at least 1.' });
       return;
     }
-    Cart.add(currentProduct, qty);
+    if (Cart.isOutOfStock(currentProduct)) {
+      Swal.fire({ icon: 'warning', title: 'Out of Stock', text: `${currentProduct.name} is currently unavailable.` });
+      return;
+    }
+    const result = Cart.add(currentProduct, qty);
+    if (!result.ok) {
+      Swal.fire({ icon: 'warning', title: 'Cannot add to cart', text: result.message });
+      return;
+    }
     Swal.fire({ icon: 'success', title: 'Added to cart', timer: 1200, showConfirmButton: false });
   });
 

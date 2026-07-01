@@ -58,6 +58,12 @@ $(document).ready(() => {
       { data: 'email', render: (d) => `<span class="email-cell">${escapeHtml(d)}</span>` },
       { data: 'role', render: (d) => `<span class="role-pill role-${normalizeRole(d)}">${escapeHtml(normalizeRole(d))}</span>` },
       {
+        data: 'email_verified_at',
+        render: (d) => d
+          ? '<span class="status-pill status-active">Verified</span>'
+          : '<span class="status-pill status-inactive">Pending</span>'
+      },
+      {
         data: 'is_active',
         render: (d) => `<span class="status-pill ${d ? 'status-active' : 'status-inactive'}">${d ? 'Active' : 'Inactive'}</span>`
       },
@@ -83,8 +89,8 @@ $(document).ready(() => {
     ],
     autoWidth: false,
     columnDefs: [
-      { targets: 2, width: '240px' },
-      { targets: 6, width: '190px', orderable: false }
+      { targets: 2, width: '220px' },
+      { targets: 7, width: '190px', orderable: false }
     ]
   });
 
@@ -112,10 +118,16 @@ $(document).ready(() => {
         role: $('#user-role').val()
       }),
       headers: { Authorization: `Bearer ${getToken()}` },
-      success: () => {
+      success: (res) => {
         $('#userModal').modal('hide');
         userTable.ajax.reload();
-        Swal.fire({ icon: 'success', title: 'User created', timer: 1200, showConfirmButton: false });
+        Swal.fire({
+          icon: 'success',
+          title: 'User created',
+          text: res.message || 'Verification email sent to the new user.',
+          timer: 2500,
+          showConfirmButton: false
+        });
       },
       error: (xhr) => Swal.fire('Error', xhr.responseJSON?.error || 'Save failed', 'error')
     });

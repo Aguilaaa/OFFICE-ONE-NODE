@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:4000/api/v1';
+const API_URL = (window.location.port === '4000')
+  ? `${window.location.origin}/api/v1`
+  : 'http://localhost:4000/api/v1';
 
 const validateForm = () => {
   let valid = true;
@@ -29,9 +31,13 @@ $(document).ready(() => {
         email: $('#email').val().trim(),
         password: $('#password').val()
       }),
-      success: () => {
-        Swal.fire({ icon: 'success', title: 'Registered!', text: 'You can now login.' })
-          .then(() => window.location.href = 'login.html');
+      success: (res) => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Check your email',
+          html: res.message || 'We sent a verification link. Please verify your email before logging in.',
+          confirmButtonText: 'Go to Login'
+        }).then(() => window.location.href = 'login.html');
       },
       error: (xhr) => {
         Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.error || 'Registration failed' });
