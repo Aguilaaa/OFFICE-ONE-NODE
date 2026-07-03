@@ -5,7 +5,9 @@
   "scripts": {
     "start": "nodemon index.js",
     "seed": "node seed.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "test:email": "node scripts/test-email.js",
+    "test:pdf": "node scripts/test-pdf.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

@@ -51,6 +51,27 @@ const renderItems = (products) => {
   }).join('');
 };
 
+const downloadReceipt = async (orderId, filenameHint = 'receipt') => {
+  try {
+    const res = await fetch(`${API_URL}/my-orders/${orderId}/receipt`, { headers: authHeader() });
+    if (!res.ok) throw new Error('Could not download receipt');
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : `${filenameHint}.pdf`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    Swal.fire('Error', err.message || 'Could not download PDF receipt.', 'error');
+  }
+};
+
 const renderOrders = (orders) => {
   const $list = $('#orders-list').empty();
   $('#orders-loading').addClass('d-none');
@@ -77,6 +98,9 @@ const renderOrders = (orders) => {
         <div class="order-card-items">${renderItems(order.Products)}</div>
         <div class="order-card-foot">
           <strong>Total: PHP ${parseFloat(order.grand_total || 0).toFixed(2)}</strong>
+          <button type="button" class="btn btn-secondary btn-sm download-receipt-btn" data-id="${order.id}">
+            <i class="fas fa-file-pdf"></i> Download PDF
+          </button>
           ${order.notes ? `<span class="text-muted small">Note: ${order.notes}</span>` : ''}
         </div>
       </article>
@@ -107,5 +131,9 @@ $(document).ready(() => {
       }
       Swal.fire('Error', xhr.responseJSON?.error || 'Could not load orders.', 'error');
     }
+  });
+
+  $(document).on('click', '.download-receipt-btn', function () {
+    downloadReceipt($(this).data('id'));
   });
 });

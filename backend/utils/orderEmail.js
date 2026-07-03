@@ -34,10 +34,17 @@ const EMAIL_CONFIG = {
 
 const resolveEmailType = (status, previousStatus = null) => {
   const next = status || 'Pending';
-  if (!previousStatus) return 'confirmation';
+  if (!previousStatus) return receiptTypeForStatus(next);
   if (next === 'Completed') return 'completed';
   if (next === 'Cancelled') return 'cancelled';
   return 'processing';
+};
+
+const receiptTypeForStatus = (status) => {
+  const next = status || 'Pending';
+  if (next === 'Completed') return 'completed';
+  if (next === 'Cancelled') return 'cancelled';
+  return 'confirmation';
 };
 
 const buildItemsHtml = (transaction) => {
@@ -80,7 +87,7 @@ const sendOrderEmail = async (transaction, totals, type = 'confirmation', previo
   const config = EMAIL_CONFIG[emailType];
   const orderStatus = statusLabel(transaction.status);
   const orderDate = new Date(transaction.createdAt).toLocaleString();
-  const pdfBuffer = await generateReceipt(transaction, totals, { title: config.pdfTitle });
+  const { pdfBuffer, filename } = await buildReceiptAttachment(transaction, totals, emailType);
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#1e293b;">
@@ -110,12 +117,23 @@ const sendOrderEmail = async (transaction, totals, type = 'confirmation', previo
     subject: config.subject(transaction.transaction_no),
     html,
     attachments: [{
-      filename: config.pdfFilename(transaction.transaction_no),
+      filename,
       content: pdfBuffer
     }]
   });
 
   return true;
+};
+
+const buildReceiptAttachment = async (transaction, totals, type = null) => {
+  const emailType = type || receiptTypeForStatus(transaction.status);
+  const config = EMAIL_CONFIG[emailType] || EMAIL_CONFIG.confirmation;
+  const pdfBuffer = await generateReceipt(transaction, totals, { title: config.pdfTitle });
+  return {
+    pdfBuffer,
+    filename: config.pdfFilename(transaction.transaction_no),
+    title: config.pdfTitle
+  };
 };
 
 const queueOrderEmail = (orderId, type, previousStatus = null) => {
@@ -144,4 +162,4 @@ const queueOrderEmail = (orderId, type, previousStatus = null) => {
   });
 };
 
-module.exports = { sendOrderEmail, queueOrderEmail, resolveEmailType };
+module.exports = { sendOrderEmail, queueOrderEmail, resolveEmailType, buildReceiptAttachment, EMAIL_CONFIG };

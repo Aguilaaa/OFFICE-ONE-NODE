@@ -1,5 +1,5 @@
 const db = require('../models');
-const { sendOrderEmail, queueOrderEmail, resolveEmailType } = require('../utils/orderEmail');
+const { sendOrderEmail, queueOrderEmail, resolveEmailType, buildReceiptAttachment } = require('../utils/orderEmail');
 const { getOrderTotals, attachTotals, getIncomeByDateRange } = require('../utils/orderQuery');
 const { trashedWhere, softDeleteRow, restoreRow } = require('../utils/softDelete');
 const { Op } = require('sequelize');
@@ -98,6 +98,41 @@ exports.getMyOrder = async (req, res) => {
     return res.status(200).json({ success: true, result });
   } catch (err) {
     return res.status(500).json({ error: 'Error fetching order' });
+  }
+};
+
+const sendReceiptPdf = async (res, transaction) => {
+  const totals = await getOrderTotals(db.sequelize, transaction);
+  const emailType = resolveEmailType(transaction.status);
+  const { pdfBuffer, filename } = await buildReceiptAttachment(transaction, totals, emailType);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  return res.send(pdfBuffer);
+};
+
+exports.getMyOrderReceipt = async (req, res) => {
+  try {
+    const transaction = await db.Transaction.findOne({
+      where: { id: req.params.id, created_by: req.body.user.id, deleted_at: null },
+      include: includeOrder
+    });
+    if (!transaction) return res.status(404).json({ error: 'Order not found' });
+    return await sendReceiptPdf(res, transaction);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Error generating receipt PDF' });
+  }
+};
+
+exports.getTransactionReceipt = async (req, res) => {
+  try {
+    const transaction = await db.Transaction.findOne({
+      where: { id: req.params.id, ...trashedWhere(req.query.trashed) },
+      include: includeOrder
+    });
+    if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+    return await sendReceiptPdf(res, transaction);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Error generating receipt PDF' });
   }
 };
 

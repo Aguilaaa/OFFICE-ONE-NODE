@@ -56,6 +56,7 @@ const actionsCellHtml = (row) => {
   if (normalizeStatus(row.status) === 'Pending') {
     btns += ` <button class="btn btn-primary btn-sm complete-btn" data-id="${row.id}"><i class="fas fa-check"></i> Complete</button>`;
   }
+  btns += ` <button class="btn btn-info btn-sm receipt-btn" data-id="${row.id}"><i class="fas fa-file-pdf"></i> PDF</button>`;
   btns += ` <button class="btn btn-danger btn-sm delete-btn" data-id="${row.id}"><i class="fas fa-trash"></i> Delete</button></div>`;
   return btns;
 };
@@ -237,6 +238,27 @@ $(document).ready(() => {
         }
       });
     });
+  });
+
+  $(document).on('click', '.receipt-btn', function () {
+    const id = $(this).data('id');
+    fetch(`${API_URL}/transactions/${id}/receipt`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(async (res) => {
+      if (!res.ok) throw new Error('Could not download receipt');
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : `receipt-${id}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }).catch(() => Swal.fire('Error', 'Could not download PDF receipt.', 'error'));
   });
 
   $(document).on('click', '.delete-btn', function () {

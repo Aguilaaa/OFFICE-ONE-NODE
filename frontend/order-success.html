@@ -32,15 +32,41 @@
         <p class="text-muted small mt-2">An admin will complete your order once it is ready to ship.</p>
         <p id="order-email-note" class="text-muted small mt-1 d-none"><i class="fas fa-envelope"></i> A confirmation email with PDF receipt was sent to your inbox.</p>
       </div>
+      <button type="button" id="btn-download-receipt" class="btn btn-secondary mt-2 d-none"><i class="fas fa-file-pdf"></i> Download PDF Receipt</button>
       <a href="my-orders.html" class="btn btn-outline-primary mt-2 mr-2">Track My Orders</a>
       <a href="index.html" class="btn btn-primary mt-3">Continue Shopping</a>
     </div>
   </div>
 
   <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.16.1/sweetalert2.min.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/common.js"></script>
   <script>
+    const downloadReceipt = async (orderId) => {
+      const API_URL = (window.location.port === '4000')
+        ? `${window.location.origin}/api/v1`
+        : 'http://localhost:4000/api/v1';
+      try {
+        const res = await fetch(`${API_URL}/my-orders/${orderId}/receipt`, { headers: authHeader() });
+        if (!res.ok) throw new Error('Could not download receipt');
+        const blob = await res.blob();
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="([^"]+)"/);
+        const filename = match ? match[1] : `receipt-${orderId}.pdf`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        Swal.fire('Error', 'Could not download PDF receipt.', 'error');
+      }
+    };
+
     $(document).ready(() => {
       const order = JSON.parse(sessionStorage.getItem('lastOrder') || 'null');
       if (!order) {
@@ -52,6 +78,9 @@
       const status = order.status || 'Pending';
       $('#order-status').text(status === 'Completed' ? 'Completed' : status === 'Cancelled' ? 'Cancelled' : 'Processing');
       if (order.emailSent) $('#order-email-note').removeClass('d-none');
+      if (order.id) {
+        $('#btn-download-receipt').removeClass('d-none').on('click', () => downloadReceipt(order.id));
+      }
       sessionStorage.removeItem('lastOrder');
     });
   </script>

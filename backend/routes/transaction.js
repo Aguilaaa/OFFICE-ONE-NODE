@@ -1,14 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAllTransactions, getMyOrders, getMyOrder, createTransaction, updateTransaction,
+  getAllTransactions, getMyOrders, getMyOrder, getMyOrderReceipt, getTransactionReceipt,
+  createTransaction, updateTransaction,
   deleteTransaction, restoreTransaction, getIncomeReport, checkout
 } = require('../controllers/transaction');
 const { isAuthenticatedUser, isAdmin } = require('../middlewares/auth');
 
 router.get('/my-orders', isAuthenticatedUser, getMyOrders);
+router.get('/my-orders/:id/receipt', isAuthenticatedUser, getMyOrderReceipt);
 router.get('/my-orders/:id', isAuthenticatedUser, getMyOrder);
 router.get('/transactions', isAdmin, getAllTransactions);
+router.get('/transactions/:id/receipt', isAdmin, getTransactionReceipt);
 router.post('/checkout', isAuthenticatedUser, checkout);
 router.post('/transactions', isAdmin, createTransaction);
 router.put('/transactions/:id/restore', isAdmin, restoreTransaction);
