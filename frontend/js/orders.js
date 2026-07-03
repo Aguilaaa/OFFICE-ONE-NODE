@@ -21,6 +21,7 @@ let products = [];
 let orderTable;
 const trashState = { showTrashed: false };
 const normalizeStatus = (status) => status === 'Draft' ? 'Pending' : status;
+const lineItem = (product) => product.OrderItem || product.order_items;
 
 const reloadOrdersTable = (keepPage = true) => {
   if (!orderTable) return;
@@ -90,7 +91,7 @@ const getLineItems = () => {
 const validateOrderForm = () => {
   let ok = true;
   const allowedStatuses = ['Pending', 'Completed', 'Cancelled'];
-  if (!$('#transaction_no').val().trim()) { $('#transaction_no-error').show(); ok = false; } else { $('#transaction_no-error').hide(); }
+  if (!$('#order_no').val().trim()) { $('#order_no-error').show(); ok = false; } else { $('#order_no-error').hide(); }
   if (!allowedStatuses.includes($('#status').val())) {
     Swal.fire('Error', 'Select a valid order status.', 'error');
     ok = false;
@@ -106,7 +107,7 @@ $(document).ready(() => {
 
   orderTable = $('#orders-table').DataTable({
     ajax: {
-      url: `${API_URL}/transactions`,
+      url: `${API_URL}/orders`,
       dataSrc: 'rows',
       beforeSend(xhr) {
         xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
@@ -114,7 +115,7 @@ $(document).ready(() => {
     },
     columns: [
       { data: 'id', title: 'Order ID', render: (d) => `<span class="order-id-pill">#${escapeHtml(d)}</span>` },
-      { data: 'transaction_no', title: 'Transaction No', render: (d) => `<strong class="transaction-code">${escapeHtml(d)}</strong>` },
+      { data: 'order_no', title: 'Order No', render: (d) => `<strong class="order-code">${escapeHtml(d)}</strong>` },
       {
         data: 'User.name',
         title: 'Customer',
@@ -142,8 +143,8 @@ $(document).ready(() => {
     ]
   });
 
-  setupTrashToggle({ table: orderTable, listUrl: `${API_URL}/transactions`, $btn: $('#btn-trash'), $addBtn: $('#btn-add'), trashState });
-  bindRestore({ resource: 'transactions', table: orderTable, getToken, apiUrl: API_URL });
+  setupTrashToggle({ table: orderTable, listUrl: `${API_URL}/orders`, $btn: $('#btn-trash'), $addBtn: $('#btn-add'), trashState });
+  bindRestore({ resource: 'orders', table: orderTable, getToken, apiUrl: API_URL });
 
   $('#btn-add').click(() => {
     $('#order-form')[0].reset();
@@ -171,12 +172,12 @@ $(document).ready(() => {
     const row = orderTable.rows().data().toArray().find((r) => r.id === id);
     if (!row) return;
     $('#order-id').val(row.id);
-    $('#transaction_no').val(row.transaction_no);
+    $('#order_no').val(row.order_no);
     $('#status').val(normalizeStatus(row.status));
     $('#notes').val(row.notes || '');
     $('#line-items').empty();
     (row.Products || []).forEach((p) => {
-      addLineRow(p.id, p.TransactionItem?.quantity || 1);
+      addLineRow(p.id, lineItem(p)?.quantity || 1);
     });
     if (!row.Products?.length) addLineRow();
     $('#orderModal .modal-title').text('Edit Order');
@@ -188,13 +189,13 @@ $(document).ready(() => {
     if (!validateOrderForm()) return;
     const id = $('#order-id').val();
     const payload = {
-      transaction_no: $('#transaction_no').val().trim(),
+      order_no: $('#order_no').val().trim(),
       status: $('#status').val(),
       notes: $('#notes').val(),
       items: getLineItems()
     };
     $.ajax({
-      url: id ? `${API_URL}/transactions/${id}` : `${API_URL}/transactions`,
+      url: id ? `${API_URL}/orders/${id}` : `${API_URL}/orders`,
       method: id ? 'PUT' : 'POST',
       contentType: 'application/json',
       data: JSON.stringify(payload),
@@ -219,7 +220,7 @@ $(document).ready(() => {
       $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
 
       $.ajax({
-        url: `${API_URL}/transactions/${id}`,
+        url: `${API_URL}/orders/${id}`,
         method: 'PUT',
         contentType: 'application/json',
         data: JSON.stringify({ status: 'Completed' }),
@@ -242,7 +243,7 @@ $(document).ready(() => {
 
   $(document).on('click', '.receipt-btn', function () {
     const id = $(this).data('id');
-    fetch(`${API_URL}/transactions/${id}/receipt`, {
+    fetch(`${API_URL}/orders/${id}/receipt`, {
       headers: { Authorization: `Bearer ${getToken()}` }
     }).then(async (res) => {
       if (!res.ok) throw new Error('Could not download receipt');
@@ -266,7 +267,7 @@ $(document).ready(() => {
     Swal.fire({ title: 'Move to trash?', text: 'You can restore this order later.', icon: 'warning', showCancelButton: true }).then((r) => {
       if (!r.isConfirmed) return;
       $.ajax({
-        url: `${API_URL}/transactions/${id}`, method: 'DELETE',
+        url: `${API_URL}/orders/${id}`, method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
         success: () => reloadOrdersTable(true),
       });

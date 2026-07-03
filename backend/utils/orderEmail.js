@@ -47,9 +47,11 @@ const receiptTypeForStatus = (status) => {
   return 'confirmation';
 };
 
-const buildItemsHtml = (transaction) => {
-  const rows = (transaction.Products || []).map((p) => {
-    const line = p.TransactionItem || p.transaction_items;
+const lineItem = (product) => product.OrderItem || product.order_items;
+
+const buildItemsHtml = (order) => {
+  const rows = (order.Products || []).map((p) => {
+    const line = lineItem(p);
     const qty = line.quantity;
     const price = parseFloat(line.unit_price);
     const lineTotal = qty * price;
@@ -79,34 +81,34 @@ const buildItemsHtml = (transaction) => {
   `;
 };
 
-const sendOrderEmail = async (transaction, totals, type = 'confirmation', previousStatus = null) => {
-  const email = transaction.User?.email;
+const sendOrderEmail = async (order, totals, type = 'confirmation', previousStatus = null) => {
+  const email = order.User?.email;
   if (!email) return false;
 
-  const emailType = EMAIL_CONFIG[type] ? type : resolveEmailType(transaction.status, previousStatus);
+  const emailType = EMAIL_CONFIG[type] ? type : resolveEmailType(order.status, previousStatus);
   const config = EMAIL_CONFIG[emailType];
-  const orderStatus = statusLabel(transaction.status);
-  const orderDate = new Date(transaction.createdAt).toLocaleString();
-  const { pdfBuffer, filename } = await buildReceiptAttachment(transaction, totals, emailType);
+  const orderStatus = statusLabel(order.status);
+  const orderDate = new Date(order.createdAt).toLocaleString();
+  const { pdfBuffer, filename } = await buildReceiptAttachment(order, totals, emailType);
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#1e293b;">
       <h2 style="color:#1e40af;margin-bottom:4px;">OfficeOne Store</h2>
       <p style="color:#64748b;margin-top:0;">Office Supplies & Furniture</p>
-      <p>Hi ${transaction.User.name},</p>
-      <p>${config.intro(transaction.transaction_no, orderStatus)}</p>
+      <p>Hi ${order.User.name},</p>
+      <p>${config.intro(order.order_no, orderStatus)}</p>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-        <p style="margin:0 0 8px;"><strong>Order #:</strong> ${transaction.transaction_no}</p>
+        <p style="margin:0 0 8px;"><strong>Order #:</strong> ${order.order_no}</p>
         <p style="margin:0 0 8px;"><strong>Date:</strong> ${orderDate}</p>
         <p style="margin:0 0 8px;"><strong>Status:</strong> ${orderStatus}</p>
-        ${previousStatus && previousStatus !== transaction.status
+        ${previousStatus && previousStatus !== order.status
     ? `<p style="margin:0 0 8px;"><strong>Previous Status:</strong> ${statusLabel(previousStatus)}</p>`
     : ''}
         <p style="margin:0;"><strong>Grand Total:</strong> PHP ${totals.grand_total.toFixed(2)}</p>
-        ${transaction.notes ? `<p style="margin:8px 0 0;"><strong>Notes:</strong> ${transaction.notes}</p>` : ''}
+        ${order.notes ? `<p style="margin:8px 0 0;"><strong>Notes:</strong> ${order.notes}</p>` : ''}
       </div>
       <h3 style="font-size:16px;margin-bottom:8px;">Items Purchased</h3>
-      ${buildItemsHtml(transaction)}
+      ${buildItemsHtml(order)}
       <p style="font-size:13px;color:#64748b;">A PDF copy of this order is attached to this email.</p>
       <p style="font-size:13px;color:#64748b;">${config.footer}</p>
     </div>
@@ -114,7 +116,7 @@ const sendOrderEmail = async (transaction, totals, type = 'confirmation', previo
 
   await sendEmail({
     email,
-    subject: config.subject(transaction.transaction_no),
+    subject: config.subject(order.order_no),
     html,
     attachments: [{
       filename,
@@ -125,13 +127,13 @@ const sendOrderEmail = async (transaction, totals, type = 'confirmation', previo
   return true;
 };
 
-const buildReceiptAttachment = async (transaction, totals, type = null) => {
-  const emailType = type || receiptTypeForStatus(transaction.status);
+const buildReceiptAttachment = async (order, totals, type = null) => {
+  const emailType = type || receiptTypeForStatus(order.status);
   const config = EMAIL_CONFIG[emailType] || EMAIL_CONFIG.confirmation;
-  const pdfBuffer = await generateReceipt(transaction, totals, { title: config.pdfTitle });
+  const pdfBuffer = await generateReceipt(order, totals, { title: config.pdfTitle });
   return {
     pdfBuffer,
-    filename: config.pdfFilename(transaction.transaction_no),
+    filename: config.pdfFilename(order.order_no),
     title: config.pdfTitle
   };
 };
@@ -142,7 +144,7 @@ const queueOrderEmail = (orderId, type, previousStatus = null) => {
       try {
         const db = require('../models');
         const { getOrderTotals } = require('./orderQuery');
-        const full = await db.Transaction.findByPk(orderId, {
+        const full = await db.Order.findByPk(orderId, {
           include: [
             { model: db.User, attributes: ['name', 'email'] },
             {

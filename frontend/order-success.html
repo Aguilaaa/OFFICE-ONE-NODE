@@ -73,7 +73,7 @@
         window.location.href = 'index.html';
         return;
       }
-      $('#order-no').text(order.transaction_no);
+      $('#order-no').text(order.order_no);
       $('#order-total').text(`PHP ${parseFloat(order.grand_total || 0).toFixed(2)}`);
       const status = order.status || 'Pending';
       $('#order-status').text(status === 'Completed' ? 'Completed' : status === 'Cancelled' ? 'Cancelled' : 'Processing');

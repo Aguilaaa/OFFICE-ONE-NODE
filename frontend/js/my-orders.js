@@ -45,8 +45,8 @@ const buildTracker = (status) => {
 const renderItems = (products) => {
   if (!products || products.length === 0) return '<p class="text-muted small mb-0">No items</p>';
   return products.map((p) => {
-    const qty = p.TransactionItem?.quantity || 1;
-    const price = parseFloat(p.TransactionItem?.unit_price || 0);
+    const qty = p.OrderItem?.quantity || 1;
+    const price = parseFloat(p.OrderItem?.unit_price || 0);
     return `<div class="order-item-line"><span>${p.name} × ${qty}</span><span>PHP ${(qty * price).toFixed(2)}</span></div>`;
   }).join('');
 };
@@ -89,7 +89,7 @@ const renderOrders = (orders) => {
       <article class="order-card" data-id="${order.id}">
         <div class="order-card-head">
           <div>
-            <div class="order-id-pill">${order.transaction_no}</div>
+            <div class="order-id-pill">${order.order_no}</div>
             <div class="date-cell mt-1">${new Date(order.createdAt).toLocaleString()}</div>
           </div>
           <span class="order-status ${statusClass(status)}">${statusLabel(status)}</span>
@@ -110,7 +110,7 @@ const renderOrders = (orders) => {
 
 $(document).ready(() => {
   if (typeof isAdminUser === 'function' && isAdminUser()) {
-    window.location.href = 'admin/transactions.html';
+    window.location.href = 'admin/orders.html';
     return;
   }
 

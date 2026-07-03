@@ -89,9 +89,9 @@ $(document).ready(() => {
       headers: authHeader(),
       success: (res) => {
         Cart.clear();
-        const order = res.transaction;
+        const order = res.order;
         sessionStorage.setItem('lastOrder', JSON.stringify({
-          transaction_no: order.transaction_no,
+          order_no: order.order_no,
           id: order.id,
           grand_total: order.grand_total,
           status: order.status || 'Pending',

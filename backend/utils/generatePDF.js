@@ -88,9 +88,9 @@ const drawSectionTitle = (doc, y, title) => {
   return y + 20;
 };
 
-const drawInfoBox = (doc, y, transaction, orderStatus) => {
+const drawInfoBox = (doc, y, order, orderStatus) => {
   const w = contentWidth();
-  const hasNotes = Boolean(transaction.notes);
+  const hasNotes = Boolean(order.notes);
   const boxH = hasNotes ? 112 : 96;
 
   doc.save();
@@ -107,16 +107,16 @@ const drawInfoBox = (doc, y, transaction, orderStatus) => {
   };
 
   let rowY = y + 14;
-  drawField('ORDER ID', `#${transaction.id}`, leftX, rowY, true);
-  drawField('TRANSACTION NO', transaction.transaction_no, rightX, rowY, true);
+  drawField('ORDER ID', `#${order.id}`, leftX, rowY, true);
+  drawField('ORDER NO', order.order_no, rightX, rowY, true);
   rowY += 30;
-  drawField('DATE', new Date(transaction.createdAt).toLocaleString(), leftX, rowY);
-  drawField('CUSTOMER', transaction.User?.name || 'Walk-in', rightX, rowY);
+  drawField('DATE', new Date(order.createdAt).toLocaleString(), leftX, rowY);
+  drawField('CUSTOMER', order.User?.name || 'Walk-in', rightX, rowY);
   rowY += 30;
-  drawField('EMAIL', transaction.User?.email || '—', leftX, rowY);
+  drawField('EMAIL', order.User?.email || '—', leftX, rowY);
 
   textAt(doc, 'STATUS', rightX, rowY, { fillColor: COLORS.muted, font: 'Helvetica', fontSize: 7 });
-  const badge = statusColors(transaction.status);
+  const badge = statusColors(order.status);
   const statusW = doc.widthOfString(orderStatus) + 18;
   const statusY = rowY + 9;
   doc.roundedRect(rightX, statusY, statusW, 16, 8).fill(badge.bg);
@@ -130,7 +130,7 @@ const drawInfoBox = (doc, y, transaction, orderStatus) => {
 
   if (hasNotes) {
     rowY += 30;
-    drawField('NOTES', transaction.notes, leftX, rowY);
+    drawField('NOTES', order.notes, leftX, rowY);
   }
 
   doc.restore();
@@ -158,7 +158,7 @@ const drawItemsTable = (doc, y, products) => {
 
   let rowY = y + headerH;
   (products || []).forEach((p, index) => {
-    const line = p.TransactionItem || p.transaction_items;
+    const line = p.OrderItem || p.order_items;
     const qty = line?.quantity || 0;
     const price = parseFloat(line?.unit_price || 0);
     const lineTotal = qty * price;
@@ -221,12 +221,12 @@ const drawTotals = (doc, y, totals) => {
   return y + boxH + 20;
 };
 
-const drawFooter = (doc, y, transaction) => {
+const drawFooter = (doc, y, order) => {
   const w = contentWidth();
 
   doc.moveTo(MARGIN, y).lineTo(MARGIN + w, y).strokeColor(COLORS.border).lineWidth(0.5).stroke();
 
-  if (transaction.status === 'Pending') {
+  if (order.status === 'Pending') {
     doc.roundedRect(MARGIN, y + 10, w, 24, 6).fill(COLORS.warningBg);
     textAt(doc, 'Your order is being processed. You will receive another email when it is completed.', MARGIN + 10, y + 18, {
       width: w - 20,
@@ -253,9 +253,9 @@ const drawFooter = (doc, y, transaction) => {
   }
 };
 
-const generateReceipt = (transaction, totals, options = {}) => {
-  const docTitle = options.title || (transaction.status === 'Completed' ? 'ORDER RECEIPT' : 'ORDER CONFIRMATION');
-  const orderStatus = statusLabel(transaction.status);
+const generateReceipt = (order, totals, options = {}) => {
+  const docTitle = options.title || (order.status === 'Completed' ? 'ORDER RECEIPT' : 'ORDER CONFIRMATION');
+  const orderStatus = statusLabel(order.status);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -271,11 +271,11 @@ const generateReceipt = (transaction, totals, options = {}) => {
 
     let y = drawHeader(doc, docTitle);
     y = drawSectionTitle(doc, y, 'Order Summary');
-    y = drawInfoBox(doc, y, transaction, orderStatus);
+    y = drawInfoBox(doc, y, order, orderStatus);
     y = drawSectionTitle(doc, y, 'Items Purchased');
-    y = drawItemsTable(doc, y, transaction.Products || []);
+    y = drawItemsTable(doc, y, order.Products || []);
     y = drawTotals(doc, y, totals);
-    drawFooter(doc, y, transaction);
+    drawFooter(doc, y, order);
 
     doc.end();
   });

@@ -4,7 +4,7 @@ const path = require('path');
 
 const products = require('./routes/product');
 const users = require('./routes/user');
-const transactions = require('./routes/transaction');
+const orders = require('./routes/order');
 const dashboard = require('./routes/dashboard');
 const categories = require('./routes/category');
 
@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.use('/api/v1', products);
 app.use('/api/v1', users);
-app.use('/api/v1', transactions);
+app.use('/api/v1', orders);
 app.use('/api/v1', dashboard);
 app.use('/api/v1', categories);
 

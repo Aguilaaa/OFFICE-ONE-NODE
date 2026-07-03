@@ -18,24 +18,24 @@ const includeOrder = [
 (async () => {
   try {
     const orderId = process.argv[2];
-    const transaction = orderId
-      ? await db.Transaction.findByPk(orderId, { include: includeOrder })
-      : await db.Transaction.findOne({ include: includeOrder, order: [['id', 'DESC']] });
+    const order = orderId
+      ? await db.Order.findByPk(orderId, { include: includeOrder })
+      : await db.Order.findOne({ include: includeOrder, order: [['id', 'DESC']] });
 
-    if (!transaction) {
+    if (!order) {
       console.error('No orders found. Place an order first or pass an order ID.');
       process.exit(1);
     }
 
-    const totals = await getOrderTotals(db.sequelize, transaction);
-    const { pdfBuffer, filename, title } = await buildReceiptAttachment(transaction, totals);
+    const totals = await getOrderTotals(db.sequelize, order);
+    const { pdfBuffer, filename, title } = await buildReceiptAttachment(order, totals);
     const outDir = path.join(__dirname, '..', 'uploads');
     const outPath = path.join(outDir, filename);
 
     fs.writeFileSync(outPath, pdfBuffer);
 
     console.log(`PDF generated: ${title}`);
-    console.log(`Order: ${transaction.transaction_no} (#${transaction.id})`);
+    console.log(`Order: ${order.order_no} (#${order.id})`);
     console.log(`Saved to: ${outPath}`);
     process.exit(0);
   } catch (err) {

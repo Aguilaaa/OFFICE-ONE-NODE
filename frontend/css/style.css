@@ -1013,6 +1013,7 @@ table.dataTable thead th {
   font-size: 0.78rem;
 }
 
+.order-code,
 .transaction-code {
   color: var(--text-dark);
 }

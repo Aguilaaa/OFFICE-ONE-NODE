@@ -116,7 +116,7 @@ $(document).ready(() => {
       const s = data.stats;
       $('#stat-products').text(s.totalProducts);
       $('#stat-users').text(s.totalUsers);
-      $('#stat-transactions').text(s.totalTransactions);
+      $('#stat-orders').text(s.totalOrders);
       $('#stat-revenue').text(`PHP ${parseFloat(s.totalRevenue).toFixed(2)}`);
       buildCharts(data);
     },
